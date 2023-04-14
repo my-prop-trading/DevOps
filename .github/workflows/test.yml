@@ -4,12 +4,12 @@ on:
   push:
 
 
-#on:
-#  workflow_call:
-#    inputs:
-#      repository_name:
-#        required: true
-#        type: string
+on:
+  workflow_call:
+    inputs:
+      repository_name:
+        required: true
+        type: string
 
 jobs:
   build:
@@ -21,7 +21,7 @@ jobs:
       with:
         name: 'DOCKER_USERNAME'
         value: ${{ secrets.DOCKER_USERNAME }}
-        repository: my-prop-trading/auth-rest-api
+        repository: my-prop-trading/rest-api-wl-shared
         token: ${{ secrets.AUTH_TOKEN }}
 
     - name: set docker password
@@ -29,6 +29,6 @@ jobs:
       with:
         name: 'DOCKER_PASSWORD'
         value: ${{ secrets.DOCKER_PASSWORD }}
-        repository: my-prop-trading/auth-rest-api
+        repository: my-prop-trading/rest-api-wl-shared
         token: ${{ secrets.AUTH_TOKEN }}
 
