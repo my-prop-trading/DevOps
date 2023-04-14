@@ -1,20 +1,33 @@
 name: test
 
 on:
-  workflow_call:
-    inputs:
-      repository_name:
-        required: true
-        type: string
+  push:
+
+#on:
+#  workflow_call:
+#    inputs:
+#      repository_name:
+#        required: true
+#        type: string
 
 jobs:
   build:
     runs-on: ubuntu-20.04
     steps:
-    - name: actions
+
+    - name: set docker username
       uses: hmanzur/actions-set-secret@v2.0.0
       with:
         name: 'DOCKER_USERNAME'
         value: ${{ secrets.DOCKER_USERNAME }}
-        repository: my-prop-trading/${{ inputs.repository_name }}
+        repository: my-prop-trading/auth-rest-api
         token: ${{ secrets.AUTH_TOKEN }}
+
+    - name: set docker password
+      uses: hmanzur/actions-set-secret@v2.0.0
+      with:
+        name: 'DOCKER_PASSWORD'
+        value: ${{ secrets.DOCKER_PASSWORD }}
+        repository: my-prop-trading/auth-rest-api
+        token: ${{ secrets.AUTH_TOKEN }}
+
