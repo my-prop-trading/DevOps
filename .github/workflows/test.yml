@@ -1,7 +1,11 @@
 name: set secrets for repos
-
 on:
- push:
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: 'repository'
+        required: true
+        type: string
 
 jobs:
   build:
@@ -13,7 +17,7 @@ jobs:
       with:
         name: 'DOCKER_USERNAME'
         value: ${{ secrets.DOCKER_USERNAME }}
-        repository: my-prop-trading/DevOps
+        repository: my-prop-trading/${{ inputs.repository }}
         token: ${{ secrets.AUTH_TOKEN }}
 
     - name: set docker password
@@ -21,134 +25,5 @@ jobs:
       with:
         name: 'DOCKER_PASSWORD'
         value: ${{ secrets.DOCKER_PASSWORD }}
-        repository: my-prop-trading/DevOps
+        repository: my-prop-trading/${{ inputs.repository }}
         token: ${{ secrets.AUTH_TOKEN }}
-
-    - name: set docker username
-      uses: hmanzur/actions-set-secret@v2.0.0
-      with:
-        name: 'DOCKER_USERNAME'
-        value: ${{ secrets.DOCKER_USERNAME }}
-        repository: my-prop-trading/auth-rest-api 
-        token: ${{ secrets.AUTH_TOKEN }}
-
-    - name: set docker password
-      uses: hmanzur/actions-set-secret@v2.0.0
-      with:
-        name: 'DOCKER_PASSWORD'
-        value: ${{ secrets.DOCKER_PASSWORD }}
-        repository: my-prop-trading/auth-rest-api
-        token: ${{ secrets.AUTH_TOKEN }}
-
-    - name: set docker username
-      uses: hmanzur/actions-set-secret@v2.0.0
-      with:
-        name: 'DOCKER_USERNAME'
-        value: ${{ secrets.DOCKER_USERNAME }}
-        repository: my-prop-trading/docker-infrastructure 
-        token: ${{ secrets.AUTH_TOKEN }}
-
-    - name: set docker password
-      uses: hmanzur/actions-set-secret@v2.0.0
-      with:
-        name: 'DOCKER_PASSWORD'
-        value: ${{ secrets.DOCKER_PASSWORD }}
-        repository: my-prop-trading/docker-infrastructure 
-        token: ${{ secrets.AUTH_TOKEN }}
-
-    - name: set docker username
-      uses: hmanzur/actions-set-secret@v2.0.0
-      with:
-        name: 'DOCKER_USERNAME'
-        value: ${{ secrets.DOCKER_USERNAME }}
-        repository: my-prop-trading/trader-creds-flows-grpc 
-        token: ${{ secrets.AUTH_TOKEN }}
-
-    - name: set docker password
-      uses: hmanzur/actions-set-secret@v2.0.0
-      with:
-        name: 'DOCKER_PASSWORD'
-        value: ${{ secrets.DOCKER_PASSWORD }}
-        repository: my-prop-trading/trader-creds-flows-grpc 
-        token: ${{ secrets.AUTH_TOKEN }}
-
-    - name: set docker username
-      uses: hmanzur/actions-set-secret@v2.0.0
-      with:
-        name: 'DOCKER_USERNAME'
-        value: ${{ secrets.DOCKER_USERNAME }}
-        repository: my-prop-trading/rest-api-wl-shared
-        token: ${{ secrets.AUTH_TOKEN }}
-
-    - name: set docker password
-      uses: hmanzur/actions-set-secret@v2.0.0
-      with:
-        name: 'DOCKER_PASSWORD'
-        value: ${{ secrets.DOCKER_PASSWORD }}
-        repository: my-prop-trading/rest-api-wl-shared
-        token: ${{ secrets.AUTH_TOKEN }}
-
-    - name: set docker username
-      uses: hmanzur/actions-set-secret@v2.0.0
-      with:
-        name: 'DOCKER_USERNAME'
-        value: ${{ secrets.DOCKER_USERNAME }}
-        repository: my-prop-trading/prop-engine-sb-contracts 
-        token: ${{ secrets.AUTH_TOKEN }}
-
-    - name: set docker password
-      uses: hmanzur/actions-set-secret@v2.0.0
-      with:
-        name: 'DOCKER_PASSWORD'
-        value: ${{ secrets.DOCKER_PASSWORD }}
-        repository: my-prop-trading/prop-engine-sb-contracts 
-        token: ${{ secrets.AUTH_TOKEN }}
-
-    - name: set docker username
-      uses: hmanzur/actions-set-secret@v2.0.0
-      with:
-        name: 'DOCKER_USERNAME'
-        value: ${{ secrets.DOCKER_USERNAME }}
-        repository: my-prop-trading/my-nosql-contracts 
-        token: ${{ secrets.AUTH_TOKEN }}
-
-    - name: set docker password
-      uses: hmanzur/actions-set-secret@v2.0.0
-      with:
-        name: 'DOCKER_PASSWORD'
-        value: ${{ secrets.DOCKER_PASSWORD }}
-        repository: my-prop-trading/my-nosql-contracts 
-        token: ${{ secrets.AUTH_TOKEN }}
-
-    - name: set docker username
-      uses: hmanzur/actions-set-secret@v2.0.0
-      with:
-        name: 'DOCKER_USERNAME'
-        value: ${{ secrets.DOCKER_USERNAME }}
-        repository: my-prop-trading/key-value-rest-api 
-        token: ${{ secrets.AUTH_TOKEN }}
-
-    - name: set docker password
-      uses: hmanzur/actions-set-secret@v2.0.0
-      with:
-        name: 'DOCKER_PASSWORD'
-        value: ${{ secrets.DOCKER_PASSWORD }}
-        repository: my-prop-trading/key-value-rest-api 
-        token: ${{ secrets.AUTH_TOKEN }}
-
-    - name: set docker username
-      uses: hmanzur/actions-set-secret@v2.0.0
-      with:
-        name: 'DOCKER_USERNAME'
-        value: ${{ secrets.DOCKER_USERNAME }}
-        repository: my-prop-trading/web-terminal 
-        token: ${{ secrets.AUTH_TOKEN }}
-
-    - name: set docker password
-      uses: hmanzur/actions-set-secret@v2.0.0
-      with:
-        name: 'DOCKER_PASSWORD'
-        value: ${{ secrets.DOCKER_PASSWORD }}
-        repository: my-prop-trading/web-terminal 
-        token: ${{ secrets.AUTH_TOKEN }}
-
