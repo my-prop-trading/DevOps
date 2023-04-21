@@ -49,5 +49,5 @@ jobs:
           echo "$DOCKER_PASS" | docker login --username "$DOCKER_USER" --password-stdin   
       - name: Docker Build and Publish
         run: |          
-          docker build -t ${{ inputs.image_name }}:${{ steps.get_version.outputs.VERSION }}} .
+          docker build -t ${{ inputs.image_name }}:${{ steps.get_version.outputs.VERSION }} .
           docker push ${{ inputs.image_name }}:${{ steps.get_version.outputs.VERSION }}
