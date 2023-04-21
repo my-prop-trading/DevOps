@@ -68,8 +68,8 @@ jobs:
         ref: main
         token: ${{ secrets.AUTH_TOKEN }}
     - run: |
-        pattern=${{ inputs.image_name }}:.*$
-        imagename=${{ inputs.image_name }}:${{ steps.get_version.outputs.VERSION }}
+        pattern=${{ inputs.repository_name }}:.*$
+        imagename=${{ inputs.repository_name }}:${{ steps.get_version.outputs.VERSION }}
         reg=$"s/${pattern}/${imagename}/g"
         echo $reg
         find . -type f -name "*.*ml" -exec sed -i -r $reg {} \;
