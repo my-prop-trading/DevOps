@@ -60,6 +60,9 @@ jobs:
       uses: ASzc/change-string-case-action@v1
       with:
         string: ${{ inputs.repository_name }}
+        
+    - name: ls -la
+      run: ls -la
 
     - name: Docker login
       env:
@@ -69,7 +72,7 @@ jobs:
         echo "$DOCKER_PASS" | docker login --username "$DOCKER_USER" --password-stdin   
     - name: Docker Build and Publish
       run: |          
-        docker build -t myproptrading/backoffice:${{ steps.get_version.outputs.VERSION }} .
+        docker build -t myproptrading/backoffice:${{ steps.get_version.outputs.VERSION }} ./Backoffice/Dockerfile
         docker push myproptrading/backoffice:${{ steps.get_version.outputs.VERSION }}
   
   docker-deploy:
