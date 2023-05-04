@@ -60,12 +60,6 @@ jobs:
       uses: ASzc/change-string-case-action@v1
       with:
         string: ${{ inputs.repository_name }}
-
-    - name: Login to Docker Hub
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
         
     - name: Publish image azure
       uses: docker/build-push-action@v4
@@ -73,8 +67,8 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
         path: ./publish-api
-        registry: myproptrading
-        repository: ${{ steps.string.outputs.lowercase }}
+        registry: docker.io
+        repository: myproptrading/${{ steps.string.outputs.lowercase }}
   
   docker-deploy:
     needs: [build]
