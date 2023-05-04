@@ -69,6 +69,7 @@ jobs:
         path: ./publish-api
         registry: docker.io
         repository: myproptrading/${{ steps.string.outputs.lowercase }}
+        tag_with_ref: true
   
   docker-deploy:
     needs: [build]
