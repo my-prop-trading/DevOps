@@ -1,0 +1,71 @@
+---
+- name: playbook for install packages
+  hosts: all
+  remote_user: root
+  become: true
+
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    usermod:
+      user: "root"
+      group: "docker"
+
+  tasks:
+
+    - name: Run the equivalent of "apt-get update" as a separate step
+      become: yes
+      apt:
+        update_cache: yes
+
+    - name: Install ubuntu packages
+      apt:
+        pkg:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - jq
+          - python3-pip
+          - git
+          - nano
+        state: present
+      tags:
+        - packages
+
+    - name: Install bottle python package
+      pip:
+        name: docker
+
+    - name: ensure repository key is installed
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Verify that we have the key with the fingerprint
+      apt_key:
+        id: 0EBFCD88
+        state: present
+
+    - name: ensure docker registry is available
+      apt_repository: repo='deb https://download.docker.com/linux/ubuntu jammy stable' state=present
+
+    - name: ensure docker and dependencies are installed
+      apt: name=docker-ce update_cache=yes
+
+    - name: Add remote user to "docker" group
+      user:
+        name: "{{ usermod.user }}"
+        group: "{{ usermod.group }}"
+        append: yes
+
+    - service: name=docker state=restarted
+
+    - name: Latest compose version
+      shell: COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep 'tag_name' | cut -d\" -f4) && echo $COMPOSE_VERSION
+      register: compose_version
+
+    - name: install docker-compose
+      get_url:
+        url: "https://github.com/docker/compose/releases/download/{{ compose_version.stdout }}/docker-compose-{{ ansible_system }}-{{ ansible_userspace_architecture }}"
+        dest: /usr/bin/docker-compose
+        mode: 'u+x,g+x,a+x'

@@ -69,8 +69,8 @@ jobs:
         echo "$DOCKER_PASS" | docker login --username "$DOCKER_USER" --password-stdin   
     - name: Docker Build and Publish
       run: |          
-        docker build -t ${{ inputs.image_name }}:${{ steps.get_version.outputs.VERSION }} .
-        docker push ${{ inputs.image_name }}:${{ steps.get_version.outputs.VERSION }}
+        docker build -t myproptrading/backoffice:${{ steps.get_version.outputs.VERSION }} .
+        docker push myproptrading/backoffice:${{ steps.get_version.outputs.VERSION }}
   
   docker-deploy:
     needs: [build]
@@ -88,7 +88,7 @@ jobs:
         ref: main
         token: ${{ secrets.AUTH_TOKEN }}
     - run: |
-        reg=s"/${{ inputs.repository_name }}:[0-9].*/${{ inputs.repository_name }}:${{ steps.get_version.outputs.VERSION }}/g"
+        reg=s"/backoffice:[0-9].*/backoffice:${{ steps.get_version.outputs.VERSION }}/g"
         echo $reg
         find . -type f -name "*.*ml" -exec sed -i -r $reg {} \;
         git config user.name github-actions
