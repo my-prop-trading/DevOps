@@ -46,7 +46,7 @@ resource "null_resource" "run_ansible" {
   count = var.instances
 
   provisioner "local-exec" {
-    command = "sleep 20 && ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u root -i '${join(",", hcloud_server.pt.*.ipv4_address)}' --private-key ${var.pvt_key} -e 'pub_key=${var.pub_key}' playbook.yml"
+    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u root -i '${join(",", hcloud_server.pt.*.ipv4_address)}' --private-key ${var.pvt_key} -e 'pub_key=${var.pub_key}' playbook.yml"
   }
 
   depends_on = [
