@@ -33,6 +33,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    timeout-minutes: 2
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -42,6 +43,15 @@ jobs:
       - name: Get the version
         id: get_version
         run: echo ::set-output name=VERSION::${{ inputs.release_version }}
+  
+      - name: Timestamp
+        shell: bash
+        run: |
+          TIMESTAMP=${{ inputs.build_timestamp }}
+          if [[ -z ${TIMESTAMP} ]]; then
+            TIMESTAMP=$(date --utc +%F.%H%M)
+          fi
+          echo TIMESTAMP=${TIMESTAMP} >> $GITHUB_ENV
 
       - name: Echo
         run: |
@@ -54,12 +64,14 @@ jobs:
           echo "Release Name: ${{ inputs.release_name }}"
           echo "Changelog: ${{ inputs.release_body }}"
           echo "ID: ${{ github.run_id }}"
-          echo "github.event.commits[0].message"
+          echo "Message" ${{ github.event.commits[0].message }}"
+          echo "TIMESTAMP: ${TIMESTAMP}"
             
   notify:
     name: notify release
     needs: [build]
     runs-on: self-hosted
+    timeout-minutes: 2
     steps:
     
     - name: Get current date
