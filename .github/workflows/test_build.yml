@@ -57,6 +57,7 @@ jobs:
           echo "Release Name: ${{ inputs.release_name }}"
           echo "Changelog: ${{ inputs.release_body }}"
           echo "ID: ${{ github.run_id }}"
+          echo "github.event.commits[0].message"
             
   notify:
     name: notify release
