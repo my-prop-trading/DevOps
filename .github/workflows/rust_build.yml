@@ -99,27 +99,27 @@ jobs:
         git config user.email github-actions@github.com
         if git status | grep -q modified; then git commit -a -m "Update ${{ inputs.repository_name }}:${{ steps.get_version.outputs.VERSION }}" && git push; fi
 
-  notify:
-    name: notify release
-    needs: [build, docker-deploy]
-    runs-on: self-hosted
-    steps:
+  # notify:
+  #   name: notify release
+  #   needs: [build, docker-deploy]
+  #   runs-on: self-hosted
+  #   steps:
     
-    - name: Get current date
-      id: date
-      run: echo "::set-output name=date::$(date +'%Y-%m-%d %H:%M')"
+  #   - name: Get current date
+  #     id: date
+  #     run: echo "::set-output name=date::$(date +'%Y-%m-%d %H:%M')"
         
-    - uses: actions/checkout@v2
-    - name: Telegram Notify
-      uses: appleboy/telegram-action@master
-      with:
-        to: ${{ secrets.TELEGRAM_TO }}
-        token: ${{ secrets.TELEGRAM_TOKEN }}
-        format: html
-        message: |
-          <b>Released</b> <i>${{ inputs.repository_name }}</i>. 
-          Version: <i>${{ inputs.release_version }}<i>
-          Date: <i>${{ steps.date.outputs.date }} UTC</i>
-          Release Name: <i>${{ inputs.release_name }}</i>
-          Changelog: <i>${{ inputs.release_body }}</i>
-          ID: <i>${{ github.run_id }}</i>
+  #   - uses: actions/checkout@v2
+  #   - name: Telegram Notify
+  #     uses: appleboy/telegram-action@master
+  #     with:
+  #       to: ${{ secrets.TELEGRAM_TO }}
+  #       token: ${{ secrets.TELEGRAM_TOKEN }}
+  #       format: html
+  #       message: |
+  #         <b>Released</b> <i>${{ inputs.repository_name }}</i>. 
+  #         Version: <i>${{ inputs.release_version }}<i>
+  #         Date: <i>${{ steps.date.outputs.date }} UTC</i>
+  #         Release Name: <i>${{ inputs.release_name }}</i>
+  #         Changelog: <i>${{ inputs.release_body }}</i>
+  #         ID: <i>${{ github.run_id }}</i>
