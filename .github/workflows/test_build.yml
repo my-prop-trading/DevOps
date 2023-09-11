@@ -36,9 +36,13 @@ jobs:
     timeout-minutes: 2
     steps:
       - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
+      # - uses: actions-rs/toolchain@v1
+      #   with:
+      #     toolchain: stable
+
+      - name: Get current date
+        id: date
+        run: echo "::set-output name=date::$(date +'%Y-%m-%d %H:%M')"
 
       - name: Get the version
         id: get_version
@@ -49,15 +53,14 @@ jobs:
         run: |
           TIMESTAMP=${{ inputs.build_timestamp }}
           if [[ -z ${TIMESTAMP} ]]; then
-            TIMESTAMP=$(date --utc +%F.%H%M)
+            TIMESTAMP=$(date --utc +'%F %H:%M')
           fi
           echo TIMESTAMP=${TIMESTAMP} >> $GITHUB_ENV
 
       - name: Echo
         run: |
-          echo "${{ inputs.image_name }}"
-          echo "${{ steps.get_version.outputs.VERSION }}"
-          echo "${{ inputs.release_version }}"
+          echo "image_name: ${{ inputs.image_name }}"
+          echo "VERSION: ${{ steps.get_version.outputs.VERSION }}"
           echo "Released: ${{ inputs.repository_name }}"
           echo "Version: ${{ inputs.release_version }}"
           echo "Date: ${{ steps.date.outputs.date }} UTC"
@@ -66,6 +69,13 @@ jobs:
           echo "ID: ${{ github.run_id }}"
           echo "Message: ${{ github.event.commits[0].message }}"
           echo "TIMESTAMP: ${TIMESTAMP}"
+
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Dump context
+        uses: crazy-max/ghaction-dump-context@v2
             
   notify:
     name: notify release
