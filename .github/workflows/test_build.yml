@@ -80,6 +80,7 @@ jobs:
   notify:
     name: notify release
     needs: [build]
+    runs-on: ubuntu-latest
     # runs-on: self-hosted
     timeout-minutes: 2
     steps:
