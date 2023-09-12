@@ -12,14 +12,6 @@ on:
       image_name:
         required: true
         type: string
-      release_name:
-        required: false
-        type: string
-        default: None
-      release_body:
-        required: false
-        type: string
-        default: "None"
 
     secrets:
       DOCKER_USERNAME:
@@ -78,7 +70,7 @@ jobs:
       -
         name: Dump context
         uses: crazy-max/ghaction-dump-context@v2
-            
+
   notify:
     name: notify release
     needs: [build]
@@ -103,7 +95,6 @@ jobs:
           fi
           echo TIMESTAMP=${TIMESTAMP} >> $GITHUB_ENV
           
-      # - uses: actions/checkout@v4
       - name: Telegram Notify
         if: steps.secrets.outputs.HAS_TELEGRAM_TOKEN == 'true'
         uses: appleboy/telegram-action@master
@@ -112,16 +103,13 @@ jobs:
           token: ${{ secrets.TELEGRAM_TOKEN }}
           format: html
           message: |
-            <b>Released</b> <i>${{ inputs.repository_name }}</i>. 
-            Version: <i>${{ env.VERSION }}</i>
-            Date: <i>${{ env.TIMESTAMP }} UTC</i>
-            Head Commit: <i>${{ github.event.head_commit.message }}</i>
+            <b>Released:</b> <i>${{ inputs.repository_name }}</i>. 
+            <b>Version:</b> <i>${{ env.VERSION }}</i>
+            <b>Date:</b> <i>${{ env.TIMESTAMP }} UTC</i>
             ---
-            Release Name: <i>${{ inputs.release_name }}</i>
-            Changelog: <i>${{ inputs.release_body }}</i>
+            <b>Release Name:</b> <i>${{ github.event.release.name }}</i>
+            <b>Release body:</b>\n <s>${{ github.event.release.body }}</s>
             ---
-            Release Name: <i>${{ github.event.release.name }}</i>
-            Release body: <i>${{ github.event.release.body }}</i>
-            ID: <i>${{ github.run_id }}</i>
-            Actor: <tg-spoiler>${{ github.actor }}</tg-spoiler>
+            <b>ID:</b> <i>${{ github.run_id }}</i>
+            <b>Actor:</b> <tg-spoiler>${{ github.actor }}</tg-spoiler>
             
