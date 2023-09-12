@@ -108,7 +108,7 @@ jobs:
             <b>Date:</b> <i>${{ env.TIMESTAMP }} UTC</i>
             ---
             <b>Release Name:</b> <i>${{ github.event.release.name }}</i>
-            <b>Release body:<br/></b><i>${{ github.event.release.body }}</i>
+            <b>Release body:</b> <i>${{ github.event.release.body }}</i>
             ---
             <b>ID:</b> <i>${{ github.run_id }}</i>
             <b>Actor:</b> <tg-spoiler>${{ github.actor }}</tg-spoiler>
