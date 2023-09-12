@@ -112,8 +112,8 @@ jobs:
           format: html
           message: |
             <b>Released</b> <i>${{ inputs.repository_name }}</i>. 
-            Version: <i>${VERSION}</i>
-            Date: <i>${TIMESTAMP} UTC</i>
+            Version: <i>${{ env.VERSION }}</i>
+            Date: <i>${{ env.TIMESTAMP }} UTC</i>
             Release Name: <i>${{ inputs.release_name }}</i>
             Changelog: <i>${{ inputs.release_body }}</i>
             ID: <i>${{ github.run_id }}</i>
