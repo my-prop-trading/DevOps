@@ -103,7 +103,7 @@ jobs:
         format: html
         message: |
           <b>Released</b> <i>${{ inputs.repository_name }}</i>. 
-          Version: <i>${{ inputs.release_version }}<i>
+          Version: <i>${{ inputs.release_version }}</i>
           Date: <i>${{ steps.date.outputs.date }} UTC</i>
           Release Name: <i>${{ inputs.release_name }}</i>
           Changelog: <i>${{ inputs.release_body }}</i>
