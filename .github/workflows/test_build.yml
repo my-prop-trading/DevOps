@@ -114,7 +114,8 @@ jobs:
             <b>Released</b> <i>${{ inputs.repository_name }}</i>. 
             Version: <i>${{ env.VERSION }}</i>
             Date: <i>${{ env.TIMESTAMP }} UTC</i>
-            Release Name: <i>${{ inputs.release_name }}</i>
+            Release Name: <i>${{ github.event.message }}</i>
             Changelog: <i>${{ inputs.release_body }}</i>
             ID: <i>${{ github.run_id }}</i>
             Actor: <tg-spoiler>${{ github.actor }}</tg-spoiler>
+            
