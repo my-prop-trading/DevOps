@@ -28,6 +28,10 @@ on:
         required: true
       AUTH_TOKEN:
         required: true
+      TELEGRAM_TO:
+        required: false
+      TELEGRAM_TOKEN:
+        required: false
 
 
 jobs:
