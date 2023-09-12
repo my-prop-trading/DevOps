@@ -69,6 +69,7 @@ jobs:
           echo "ID: ${{ github.run_id }}"
           echo "Message: ${{ github.event.commits[0].message }}"
           echo "TIMESTAMP: ${TIMESTAMP}"
+          echo "actor: ${{ github.actor }}"
 
   dump:
     runs-on: ubuntu-latest
