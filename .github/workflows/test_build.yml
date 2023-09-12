@@ -117,3 +117,4 @@ jobs:
             Release Name: <i>${{ inputs.release_name }}</i>
             Changelog: <i>${{ inputs.release_body }}</i>
             ID: <i>${{ github.run_id }}</i>
+            Actor: <tg-spoiler>${{ github.actor }}</tg-spoiler>
