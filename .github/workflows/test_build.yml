@@ -39,11 +39,8 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 2
     steps:
-      - uses: actions/checkout@v2
-      # - uses: actions-rs/toolchain@v1
-      #   with:
-      #     toolchain: stable
-
+      - uses: actions/checkout@v4
+      
       - name: Get current date
         id: date
         run: echo "::set-output name=date::$(date +'%Y-%m-%d %H:%M')"
@@ -86,25 +83,37 @@ jobs:
     name: notify release
     needs: [build]
     runs-on: ubuntu-latest
-    # runs-on: self-hosted
     timeout-minutes: 2
     steps:
-    
-    - name: Get current date
-      id: date
-      run: echo "::set-output name=date::$(date +'%Y-%m-%d %H:%M')"
-        
-    # - uses: actions/checkout@v4
-    - name: Telegram Notify
-      uses: appleboy/telegram-action@master
-      with:
-        to: ${{ secrets.TELEGRAM_TO }}
-        token: ${{ secrets.TELEGRAM_TOKEN }}
-        format: html
-        message: |
-          <b>Released</b> <i>${{ inputs.repository_name }}</i>. 
-          Version: <i>${{ inputs.release_version }}</i>
-          Date: <i>${{ steps.date.outputs.date }} UTC</i>
-          Release Name: <i>${{ inputs.release_name }}</i>
-          Changelog: <i>${{ inputs.release_body }}</i>
-          ID: <i>${{ github.run_id }}</i>
+
+      # - name: Get the version
+        # id: get_version
+        # run: echo ::set-output name=VERSION::${{ inputs.release_version }}
+
+      - name: Version
+        shell: bash
+        run: echo VERSION=${{ inputs.release_version }} >> $GITHUB_ENV
+
+      - name: Timestamp
+        shell: bash
+        run: |
+          TIMESTAMP=${{ inputs.build_timestamp }}
+          if [[ -z ${TIMESTAMP} ]]; then
+            TIMESTAMP=$(date --utc +'%F %H:%M')
+          fi
+          echo TIMESTAMP=${TIMESTAMP} >> $GITHUB_ENV
+          
+      # - uses: actions/checkout@v4
+      - name: Telegram Notify
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          format: html
+          message: |
+            <b>Released</b> <i>${{ inputs.repository_name }}</i>. 
+            Version: <i>${VERSION}</i>
+            Date: <i>${TIMESTAMP} UTC</i>
+            Release Name: <i>${{ inputs.release_name }}</i>
+            Changelog: <i>${{ inputs.release_body }}</i>
+            ID: <i>${{ github.run_id }}</i>
