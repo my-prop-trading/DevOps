@@ -82,7 +82,9 @@ jobs:
           docker push ${{ inputs.image_name }}:${{ steps.get_version.outputs.VERSION }}
           
       - name: SUMMARY
-        run: echo "{{ inputs.image_name }}:${{ steps.get_version.outputs.VERSION }}" >> GITHUB_STEP_SUMMARY
+        run: |
+          echo "Docker image:" >> $GITHUB_STEP_SUMMARY
+          echo "{{ inputs.image_name }}:${{ steps.get_version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
   
   docker-deploy:
     needs: [build]
