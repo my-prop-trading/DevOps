@@ -87,8 +87,10 @@ jobs:
     
     steps:
     - name: Get the version
+      # id: get_version
+      # run: echo ::set-output name=VERSION::${{ inputs.release_version }}
       id: get_version
-      run: echo ::set-output name=VERSION::${{ inputs.release_version }}
+      run: echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_OUTPUT
         
     - name: get uat docker yamls
       uses: actions/checkout@v3
