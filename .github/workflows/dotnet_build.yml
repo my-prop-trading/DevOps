@@ -19,7 +19,10 @@ on:
         required: true
       AUTH_TOKEN:
         required: true
-
+      TELEGRAM_TO:
+        required: false
+      TELEGRAM_TOKEN:
+        required: false
 
 jobs:
   build:
@@ -99,3 +102,46 @@ jobs:
         git config user.name github-actions
         git config user.email github-actions@github.com
         if git status | grep -q modified; then git commit -a -m "Update ${{ inputs.repository_name }}:${{ steps.get_version.outputs.VERSION }}" && git push; fi
+
+  notify:
+    name: notify release
+    needs: [build, docker-deploy]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+
+      - id: secrets
+        run: |
+          echo HAS_TELEGRAM_TOKEN=${{ secrets.TELEGRAM_TOKEN != '' }} >> $GITHUB_OUTPUT
+
+      - name: Version
+        shell: bash
+        run: echo VERSION=${{ inputs.release_version }} >> $GITHUB_ENV
+
+      - name: Timestamp
+        shell: bash
+        run: |
+          TIMESTAMP=${{ inputs.build_timestamp }}
+          if [[ -z ${TIMESTAMP} ]]; then
+            TIMESTAMP=$(date --utc +'%F %H:%M')
+          fi
+          echo TIMESTAMP=${TIMESTAMP} >> $GITHUB_ENV
+          
+      - name: Telegram Notify
+        if: steps.secrets.outputs.HAS_TELEGRAM_TOKEN == 'true'
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          format: html
+          message: |
+            <b>Released:</b> <i>${{ inputs.repository_name }}</i>. 
+            <b>Version:</b> <i>${{ env.VERSION }}</i>
+            <b>Date:</b> <i>${{ env.TIMESTAMP }} UTC</i>
+            ---
+            <b>Release Name:</b> <i>${{ github.event.release.name }}</i>
+            <b>Release body:</b> <i>${{ github.event.release.body }}</i>
+            ---
+            <b>ID:</b> <i>${{ github.run_id }}</i>
+            <b>Actor:</b> <tg-spoiler>${{ github.actor }}</tg-spoiler>
+            
