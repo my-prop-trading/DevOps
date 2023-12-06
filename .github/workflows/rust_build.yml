@@ -44,8 +44,10 @@ jobs:
           toolchain: stable
 
       - name: Get the version
+        # id: get_version
+        # run: echo ::set-output name=VERSION::${{ inputs.release_version }}
         id: get_version
-        run: echo ::set-output name=VERSION::${{ inputs.release_version }}
+        run: echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_OUTPUT
         
       - name: Updating version
         run: sed -i -e 's/^version = .*/version = "${{ steps.get_version.outputs.VERSION }}"/' Cargo.toml
