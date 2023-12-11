@@ -104,6 +104,8 @@ jobs:
         ref: main
         token: ${{ secrets.AUTH_TOKEN }}
     - run: |
+        pwd
+        ls -la
         reg=s"|/${{ inputs.repository_name }}:[0-9].*|/${{ inputs.repository_name }}:${{ steps.get_version.outputs.VERSION }}|g"
         echo $reg
         find . -type f -name "*.*ml" -exec sed -i -r $reg {} \;
