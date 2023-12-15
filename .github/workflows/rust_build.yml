@@ -38,14 +38,12 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
 
       - name: Get the version
-        # id: get_version
-        # run: echo ::set-output name=VERSION::${{ inputs.release_version }}
         id: get_version
         run: echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_OUTPUT
         
@@ -92,8 +90,6 @@ jobs:
     
     steps:
     - name: Get the version
-      # id: get_version
-      # run: echo ::set-output name=VERSION::${{ inputs.release_version }}
       id: get_version
       run: echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_OUTPUT
         
@@ -127,9 +123,6 @@ jobs:
       - name: Get the version
         id: get_version
         run: echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_OUTPUT
-      # - name: Version
-      #   shell: bash
-      #   run: echo VERSION=${{ inputs.release_version }} >> $GITHUB_ENV
 
       - name: Timestamp
         shell: bash
