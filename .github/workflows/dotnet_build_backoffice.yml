@@ -39,7 +39,7 @@ jobs:
       uses: actions/setup-dotnet@v3
       with:
         dotnet-version: 8.0.*
-        source-url: https://nuget.pkg.github.com/myproptrading/index.json
+        source-url: https://nuget.pkg.github.com/my-prop-trading/index.json
       env:
         NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
 
