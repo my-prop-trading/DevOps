@@ -1,0 +1,77 @@
+name: Release API client nuget
+
+on:
+  workflow_call:
+    inputs:
+      repository_name:
+        required: true
+        type: string
+      release_version:
+        required: true
+        type: string
+    secrets:
+      NUGET_TOCKEN:
+        required: true
+      # NUGET_AUTH_TOKEN:
+      #   required: true
+
+jobs:
+  build:
+
+    runs-on: self-hosted
+    env:
+      DOTNET_INSTALL_DIR: "/home/monfex"
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: |
+          7.0.*
+          8.0.*
+        source-url: https://nuget.pkg.github.com/my-prop-trading/index.json
+      env:
+        NUGET_AUTH_TOKEN: ${{secrets.NUGET_TOCKEN}}  
+
+    - name: list nugets
+      run: dotnet nuget list source
+      
+    - name: Build
+      run: dotnet build --configuration Release /p:AssemblyVersion=${{ inputs.release_version }}
+
+    - name: Test
+      run: dotnet test --no-build --configuration Release
+
+    - name: Create the package
+      run: dotnet pack --configuration Release src/${{ inputs.repository_name }} /p:Version=${{ inputs.release_version }}
+
+    - name: Publish the package to GPR
+      run: dotnet nuget push src/${{ inputs.repository_name }}/bin/Release/*.nupkg
+    #   run: dotnet nuget push src/${{ inputs.repository_name }}/bin/Release/*.nupkg -s "https://nuget.pkg.github.com/my-prop-trading/index.json" -k ${{ secrets.NUGET_TOCKEN }}
+# -----------------------------------------------------------------------------------------------------------------------------
+
+    # - uses: actions/checkout@v3
+    # - uses: actions/setup-dotnet@v3
+    #   with:
+    #     dotnet-version: '3.1.x'
+    #     source-url: https://nuget.pkg.github.com/my-prop-trading/index.json
+    #   env:
+    #     NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+    # - run: dotnet build --configuration Release /p:AssemblyVersion=${{ inputs.release_version }}
+    # - name: Create the package
+    #   run: dotnet pack --configuration Release src/${{ inputs.repository_name }} /p:Version=${{ inputs.release_version }}
+    # - name: Publish the package to GPR
+    #   run: dotnet nuget push src/${{ inputs.repository_name }}/bin/Release/*.nupkg
+
+
+#    - name: Publish the package to GPR
+#      run: dotnet nuget push src/${{ inputs.repository_name }}/bin/Release/*.nupkg -s "https://api.nuget.org/v3/index.json" -k ${{ secrets.NUGET_TOCKEN }}
+
+    # - name: Publish the package to GitHub
+    #   uses: my-prop-trading/nuget-publish-to-github-packages-action@v2.1
+    #   with:
+    #     nupkg-path:  './src/${{ inputs.repository_name }}/bin/Release/*.nupkg'
+    #     repo-owner:  'myjetwallet'
+    #     gh-user:  ${{ github.actor }}
+    #     token:  ${{ secrets.NUGET_AUTH_TOKEN }}
