@@ -32,7 +32,7 @@ jobs:
           8.0.*
         source-url: https://nuget.pkg.github.com/my-prop-trading/index.json
       env:
-        NUGET_AUTH_TOKEN: ${{secrets.NUGET_TOCKEN}}  
+        NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
 
     - name: list nugets
       run: dotnet nuget list source
