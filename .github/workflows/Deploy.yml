@@ -1,37 +1,35 @@
 name: Cargo build
 
 on:
-  workflow_dispatch:
-  release:
-    types: [published]
-    # tags:
-    #   - "[0-9]+.[0-9]+.[0-9]+"
-  # workflow_call:
-    # inputs:
-    #   repository_name:
-    #     required: true
-    #     type: string
-    #   release_version:
-    #     required: true
-    #     type: string
-    #   image_name:
-    #     required: true
-    #     type: string
-    #   branch_name:
-    #     required: true
-    #     type: string
+  # workflow_dispatch:
+  # release:
+  #   types: [published]
+  workflow_call:
+    inputs:
+      repository_name:
+        required: true
+        type: string
+      release_version:
+        required: true
+        type: string
+      image_name:
+        required: true
+        type: string
+      branch_name:
+        required: true
+        type: string
         
-    # secrets:
+    secrets:
       # DOCKER_USERNAME:
       #   required: true
       # DOCKER_PASSWORD:
       #   required: true
-      # AUTH_TOKEN:
-      #   required: true
-      # TELEGRAM_TO:
-      #   required: false
-      # TELEGRAM_TOKEN:
-      #   required: false
+      AUTH_TOKEN:
+        required: true
+      TELEGRAM_TO:
+        required: false
+      TELEGRAM_TOKEN:
+        required: false
 
 jobs:
   print-tag:
