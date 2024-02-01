@@ -36,7 +36,9 @@ jobs:
     runs-on: ubuntu-latest
     # if:  ${{ inputs.print_tags }} 
     steps:
-      - name: Print the input tag to STDOUT
+      - name: Dump context
+        uses: crazy-max/ghaction-dump-context@v2
+      # - name: Print the input tag to STDOUT
         # run: |
         #   echo "-------------------------------------------------------"
         #   echo  The repository_name are ${{ inputs.repository_name }}
@@ -46,7 +48,7 @@ jobs:
         #   echo "-------------------------------------------------------"
         #   echo  The TELEGRAM_TO are ${{ secrets.TELEGRAM_TO }}
         #   echo "-------------------------------------------------------"
-        run: echo "$GITHUB_CONTEXT"
+        # run: echo "$GITHUB_CONTEXT"
       # - name: Summory
       #   run: |
       #     echo  The repository_name are ${{ inputs.repository_name }} >> $GITHUB_STEP_SUMMARY
