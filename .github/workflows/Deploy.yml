@@ -35,9 +35,11 @@ jobs:
     steps:
       - name: Print the input tag to STDOUT
         run: |
+          echo "-------------------------------------------------------"
           echo  The repository_name are ${{ inputs.repository_name }}
           echo  The release_version are ${{ inputs.release_version }}
           echo  The image_name are ${{ inputs.image_name }}
           echo  The branch_name are ${{ inputs.branch_name }}
           echo "-------------------------------------------------------"
           echo  The TELEGRAM_TO are ${{ secrets.TELEGRAM_TO }}
+          echo "-------------------------------------------------------"
