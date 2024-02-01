@@ -1,32 +1,37 @@
 name: Cargo build
 
 on:
-  workflow_call:
-    inputs:
-      repository_name:
-        required: true
-        type: string
-      release_version:
-        required: true
-        type: string
-      image_name:
-        required: true
-        type: string
-      branch_name:
-        required: true
-        type: string
+  workflow_dispatch:
+  release:
+    types: [published]
+    # tags:
+    #   - "[0-9]+.[0-9]+.[0-9]+"
+  # workflow_call:
+    # inputs:
+    #   repository_name:
+    #     required: true
+    #     type: string
+    #   release_version:
+    #     required: true
+    #     type: string
+    #   image_name:
+    #     required: true
+    #     type: string
+    #   branch_name:
+    #     required: true
+    #     type: string
         
-    secrets:
+    # secrets:
       # DOCKER_USERNAME:
       #   required: true
       # DOCKER_PASSWORD:
       #   required: true
-      AUTH_TOKEN:
-        required: true
-      TELEGRAM_TO:
-        required: false
-      TELEGRAM_TOKEN:
-        required: false
+      # AUTH_TOKEN:
+      #   required: true
+      # TELEGRAM_TO:
+      #   required: false
+      # TELEGRAM_TOKEN:
+      #   required: false
 
 jobs:
   print-tag:
@@ -34,19 +39,20 @@ jobs:
     # if:  ${{ inputs.print_tags }} 
     steps:
       - name: Print the input tag to STDOUT
-        run: |
-          echo "-------------------------------------------------------"
-          echo  The repository_name are ${{ inputs.repository_name }}
-          echo  The release_version are ${{ inputs.release_version }}
-          echo  The image_name are ${{ inputs.image_name }}
-          echo  The branch_name are ${{ inputs.branch_name }}
-          echo "-------------------------------------------------------"
-          echo  The TELEGRAM_TO are ${{ secrets.TELEGRAM_TO }}
-          echo "-------------------------------------------------------"
-      - name: Summory
-        run: |
-          echo  The repository_name are ${{ inputs.repository_name }} >> $GITHUB_STEP_SUMMARY
-          echo  The release_version are ${{ inputs.release_version }} >> $GITHUB_STEP_SUMMARY
-          echo  The image_name are ${{ inputs.image_name }} >> $GITHUB_STEP_SUMMARY
-          echo  The branch_name are ${{ inputs.branch_name }} >> $GITHUB_STEP_SUMMARY
-          echo  The TELEGRAM_TO are ${{ secrets.TELEGRAM_TO }} >> $GITHUB_STEP_SUMMARY
+        # run: |
+        #   echo "-------------------------------------------------------"
+        #   echo  The repository_name are ${{ inputs.repository_name }}
+        #   echo  The release_version are ${{ inputs.release_version }}
+        #   echo  The image_name are ${{ inputs.image_name }}
+        #   echo  The branch_name are ${{ inputs.branch_name }}
+        #   echo "-------------------------------------------------------"
+        #   echo  The TELEGRAM_TO are ${{ secrets.TELEGRAM_TO }}
+        #   echo "-------------------------------------------------------"
+        run: echo "$GITHUB_CONTEXT"
+      # - name: Summory
+      #   run: |
+      #     echo  The repository_name are ${{ inputs.repository_name }} >> $GITHUB_STEP_SUMMARY
+      #     echo  The release_version are ${{ inputs.release_version }} >> $GITHUB_STEP_SUMMARY
+      #     echo  The image_name are ${{ inputs.image_name }} >> $GITHUB_STEP_SUMMARY
+      #     echo  The branch_name are ${{ inputs.branch_name }} >> $GITHUB_STEP_SUMMARY
+      #     echo  The TELEGRAM_TO are ${{ secrets.TELEGRAM_TO }} >> $GITHUB_STEP_SUMMARY
