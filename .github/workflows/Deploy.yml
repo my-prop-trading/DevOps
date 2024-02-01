@@ -38,9 +38,10 @@ jobs:
     steps:
       - name: Dump context
         uses: crazy-max/ghaction-dump-context@v2
-      # - name: Print the input tag to STDOUT
-        # run: |
-        #   echo "-------------------------------------------------------"
+      - name: Print the input tag to STDOUT
+        run: |
+          echo "-------------------------------------------------------"
+          echo ${{ github.event.release.target_commitish }}
         #   echo  The repository_name are ${{ inputs.repository_name }}
         #   echo  The release_version are ${{ inputs.release_version }}
         #   echo  The image_name are ${{ inputs.image_name }}
