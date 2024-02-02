@@ -96,9 +96,14 @@ jobs:
           echo PORT="22" >> $GITHUB_OUTPUT
           echo USERNAME="prop" >> $GITHUB_OUTPUT
         fi
+    - name: Test Connect
+      run: |
+        echo ${{ steps.condition.outputs.HOST }}
+        echo ${{ steps.condition.outputs.USERNAME }}
+        echo ${{ steps.condition.outputs.PORT }}
     
     - name: Deploy using remote ssh commands
-      if: steps.condition.outputs.HAS_SSH_KEY == 'true'
+      # if: steps.condition.outputs.HAS_SSH_KEY == 'true'
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ steps.condition.outputs.HOST }}
