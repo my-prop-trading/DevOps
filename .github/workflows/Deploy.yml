@@ -80,7 +80,7 @@ jobs:
     - name: Conditions
       id: condition
       run: |
-        echo HAS_SSH_KEY=${{ secrets.SSH_KEY != '' }} >> $GITHUB_OUTPUT
+        echo HAS_SSH_PRIVAT_KEY=${{ secrets.SSH_PRIVAT_KEY != '' }} >> $GITHUB_OUTPUT
         if [[ ${{ github.event.release.target_commitish }} == 'test' || ${{ github.event.release.target_commitish }} == 'alpha' ]]; then
           echo HOST="5.75.164.162" >> $GITHUB_OUTPUT
           echo PORT="22" >> $GITHUB_OUTPUT
@@ -103,7 +103,7 @@ jobs:
         echo ${{ steps.condition.outputs.PORT }}
     
     - name: Deploy using remote ssh commands
-      if: steps.condition.outputs.HAS_SSH_KEY == 'true'
+      if: steps.condition.outputs.HAS_SSH_PRIVAT_KEY == 'true'
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ steps.condition.outputs.HOST }}
