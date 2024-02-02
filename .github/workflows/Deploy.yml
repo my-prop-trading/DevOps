@@ -110,4 +110,4 @@ jobs:
         username: ${{ steps.condition.outputs.USERNAME }}
         key: ${{ secrets.SSH_PRIVAT_KEY }}
         port: ${{ steps.condition.outputs.PORT }}
-        script: whoami
+        script: ~/docker-infrastructure/microservices/${{ github.event.repository.name }}/change-image.py ${{ github.event.release.target_commitish }}
