@@ -1,9 +1,6 @@
 name: Cargo build
 
 on:
-  # workflow_dispatch:
-  # release:
-  #   types: [published]
   workflow_call:
     inputs:
       image_name:
@@ -36,7 +33,6 @@ on:
 jobs:
   print-tag:
     runs-on: ubuntu-latest
-    # if:  ${{ inputs.print_tags }} 
     steps:
       - name: Dump context
         uses: crazy-max/ghaction-dump-context@v2
