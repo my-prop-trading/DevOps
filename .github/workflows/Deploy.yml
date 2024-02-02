@@ -44,7 +44,7 @@ jobs:
         run: |
           echo "-------------------------------------------------------"
           echo  The repository_name are ${{ github.event.release.repository.name }}
-          echo  The release_version are ${{ ${{ github.event.release.name }} }}
+          echo  The release_version are ${{ github.event.release.name }}
           echo  The image_name are ${{ github.event.release.tag_name }}
           echo  The branch_name are ${{ github.event.release.target_commitish }}
           echo "-------------------------------------------------------"
