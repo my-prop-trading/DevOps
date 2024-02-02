@@ -6,12 +6,12 @@ on:
   #   types: [published]
   workflow_call:
     inputs:
-      repository_name:
-        required: true
-        type: string
-      release_version:
-        required: true
-        type: string
+      # repository_name:
+      #   required: true
+      #   type: string
+      # release_version:
+      #   required: true
+      #   type: string
       image_name:
         required: true
         type: string
@@ -43,11 +43,10 @@ jobs:
       - name: Print the input tag to STDOUT
         run: |
           echo "-------------------------------------------------------"
-          echo ${{ github.event.release.target_commitish }}
-          echo  The repository_name are ${{ inputs.repository_name }}
-          echo  The release_version are ${{ inputs.release_version }}
-          echo  The image_name are ${{ inputs.image_name }}
-          echo  The branch_name are ${{ inputs.branch_name }}
+          echo  The repository_name are ${{ github.event.release.repository.name }}
+          echo  The release_version are ${{ ${{ github.event.release.name }} }}
+          echo  The image_name are ${{ github.event.release.tag_name }}
+          echo  The branch_name are ${{ github.event.release.target_commitish }}
           echo "-------------------------------------------------------"
         #   echo  The TELEGRAM_TO are ${{ secrets.TELEGRAM_TO }}
         #   echo "-------------------------------------------------------"
@@ -55,9 +54,9 @@ jobs:
   prepare-deploy:
     runs-on: ubuntu-latest
     steps:
-    - name: Get the version
-      id: get_version
-      run: echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_OUTPUT
+    # - name: Get the version
+    #   id: get_version
+    #   run: echo "VERSION=${{ github.ref_name }}" >> $GITHUB_OUTPUT
         
     - name: get docker yamls
       uses: actions/checkout@v3
@@ -68,12 +67,12 @@ jobs:
     - run: |
         pwd
         ls -la
-        reg=s"|/${{ inputs.repository_name }}:[0-9].*|/${{ inputs.repository_name }}:${{ steps.get_version.outputs.VERSION }}|g"
+        reg=s"|/${{ github.event.release.repository.name }}:[0-9].*|/${{ github.event.release.repository.name }}:${{ github.event.release.tag_name }}|g"
         echo $reg
         find . -type f -name "*.*ml" -exec sed -i -r $reg {} \;
         git config user.name github-actions
         git config user.email github-actions@github.com
-        if git status | grep -q modified; then git commit -a -m "Update ${{ inputs.repository_name }}:${{ steps.get_version.outputs.VERSION }}" && git push; fi
+        if git status | grep -q modified; then git commit -a -m "Update ${{ github.event.release.repository.name }}:${{ github.event.release.tag_name }}" && git push; fi
 
   deploy:
     runs-on: ubuntu-latest
