@@ -5,19 +5,19 @@ on:
   # release:
   #   types: [published]
   workflow_call:
-    inputs:
+    # inputs:
       # repository_name:
       #   required: true
       #   type: string
       # release_version:
       #   required: true
       #   type: string
-      image_name:
-        required: true
-        type: string
-      branch_name:
-        required: true
-        type: string
+      # image_name:
+      #   required: true
+      #   type: string
+      # branch_name:
+      #   required: true
+      #   type: string
         
     secrets:
       # DOCKER_USERNAME:
