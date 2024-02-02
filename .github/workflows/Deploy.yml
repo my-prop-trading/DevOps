@@ -26,7 +26,7 @@ on:
       #   required: true
       AUTH_TOKEN:
         required: true
-      SSH_KEY:
+      SSH_PRIVAT_KEY:
         required: false
       TELEGRAM_TO:
         required: false
@@ -108,6 +108,6 @@ jobs:
       with:
         host: ${{ steps.condition.outputs.HOST }}
         username: ${{ steps.condition.outputs.USERNAME }}
-        key: ${{ secrets.SSH_KEY }}
+        key: ${{ secrets.SSH_PRIVAT_KEY }}
         port: ${{ steps.condition.outputs.PORT }}
         script: whoami
