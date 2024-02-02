@@ -103,7 +103,7 @@ jobs:
         echo ${{ steps.condition.outputs.PORT }}
     
     - name: Deploy using remote ssh commands
-      # if: steps.condition.outputs.HAS_SSH_KEY == 'true'
+      if: steps.condition.outputs.HAS_SSH_KEY == 'true'
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ steps.condition.outputs.HOST }}
