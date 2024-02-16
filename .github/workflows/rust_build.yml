@@ -55,7 +55,7 @@ jobs:
       - run: openssl version
 
       - run: echo $LD_LIBRARY_PATH
-    
+      - run: sudo apt update -y
       - run: sudo apt install build-essential -y
       - run: sudo apt install libglib2.0-dev -y
       - run: sudo apt install pkg-config libssl-dev -y
