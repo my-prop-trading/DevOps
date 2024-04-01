@@ -151,5 +151,5 @@ jobs:
             <b>Jira Version:</b> <code>${{ inputs.image_name }}:${{ steps.get_version.outputs.VERSION }}</code>
             ---
             <b>ID:</b> <i>${{ github.run_id }}</i>
-            <b>Actor:</b> <tg-spoiler>${{ github.actor }}</tg-spoiler>
+            # <b>Actor:</b> <tg-spoiler>${{ github.actor }}</tg-spoiler>
             
