@@ -20,6 +20,10 @@ on:
         required: false
         type: string
         default: None
+      runs_on:
+        required: false
+        type: string
+        default: ubuntu-22.04
 
     secrets:
       DOCKER_USERNAME:
@@ -36,7 +40,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ inputs.runs_on }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
@@ -55,13 +59,31 @@ jobs:
       - run: openssl version
 
       - run: echo $LD_LIBRARY_PATH
-      - run: sudo apt update
-      - run: sudo apt install -y build-essential libglib2.0-dev pkg-config libssl-dev libgtk-3-dev
+      
+      - name: Install
+        if: ${{ inputs.runs_on }} == "ubuntu-22.04"
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: build-essential libglib2.0-dev pkg-config libssl-dev libgtk-3-dev javascriptcoregtk-4.1 libsoup-3.0 webkit2gtk-4.1 protobuf-compiler
 
-      - run: sudo apt update
-      - run: sudo apt upgrade -y
-    
-      - run: sudo apt-get install javascriptcoregtk-4.1 libsoup-3.0 webkit2gtk-4.1 -y
+      # - run: sudo apt update
+      # - run: sudo apt install -y build-essential libglib2.0-dev pkg-config libssl-dev libgtk-3-dev
+      # - run: sudo apt update
+      # - run: sudo apt upgrade -y
+      # - run: sudo apt-get install javascriptcoregtk-4.1 libsoup-3.0 webkit2gtk-4.1 -y
+
+      - name: Set up cargo cache
+        uses: actions/cache@v3
+        continue-on-error: false
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ inputs.runs_on }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ inputs.runs_on }}-cargo-
 
       - run: cargo build --release
 
