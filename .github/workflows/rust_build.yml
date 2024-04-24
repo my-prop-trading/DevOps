@@ -72,18 +72,18 @@ jobs:
       # - run: sudo apt upgrade -y
       # - run: sudo apt-get install javascriptcoregtk-4.1 libsoup-3.0 webkit2gtk-4.1 -y
 
-      - name: Set up cargo cache
-        uses: actions/cache@v3
-        continue-on-error: false
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ inputs.runs_on }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ inputs.runs_on }}-cargo-
+      # - name: Set up cargo cache
+      #   uses: actions/cache@v3
+      #   continue-on-error: false
+      #   with:
+      #     path: |
+      #       ~/.cargo/bin/
+      #       ~/.cargo/registry/index/
+      #       ~/.cargo/registry/cache/
+      #       ~/.cargo/git/db/
+      #       target/
+      #     key: ${{ inputs.runs_on }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      #     restore-keys: ${{ inputs.runs_on }}-cargo-
 
       - run: cargo build --release
 
