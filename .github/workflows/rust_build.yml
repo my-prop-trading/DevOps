@@ -55,7 +55,7 @@ jobs:
         run: sed -i -e 's/^version = .*/version = "${{ steps.get_version.outputs.VERSION }}"/' Cargo.toml
 
       - name: Install Protoc
-        uses: arduino/setup-protoc@v1       
+        uses: arduino/setup-protoc@v3
       - run: openssl version
 
       - run: echo $LD_LIBRARY_PATH
@@ -116,7 +116,7 @@ jobs:
       run: echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_OUTPUT
         
     - name: get uat docker yamls
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         repository: my-prop-trading/docker-infrastructure
         ref: main
@@ -173,5 +173,5 @@ jobs:
             <b>Jira Version:</b> <code>${{ inputs.image_name }}:${{ steps.get_version.outputs.VERSION }}</code>
             ---
             <b>ID:</b> <i>${{ github.run_id }}</i>
-            # <b>Actor:</b> <tg-spoiler>${{ github.actor }}</tg-spoiler>
+            <b>Actor:</b> <tg-spoiler>${{ github.actor }}</tg-spoiler>
             
