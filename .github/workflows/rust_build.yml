@@ -121,7 +121,8 @@ jobs:
         repository: my-prop-trading/docker-infrastructure
         ref: main
         token: ${{ secrets.AUTH_TOKEN }}
-    - run: |
+    - name: Git Push
+      run: |
         pwd
         ls -la
         reg=s"|/${{ inputs.repository_name }}:[0-9].*|/${{ inputs.repository_name }}:${{ steps.get_version.outputs.VERSION }}|g"
