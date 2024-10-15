@@ -131,7 +131,7 @@ jobs:
         git config user.name github-actions
         git config user.email github-actions@github.com
         if git status | grep -q modified; then git commit -a -m "Update ${{ inputs.repository_name }}:${{ steps.get_version.outputs.VERSION }}" && git push; fi
-
+# ------------- look to https://github.com/my-prop-trading/docker-infrastructure/blob/main/.github/workflows/deploy_microservices.yml
   notify:
     name: notify release
     needs: [build, docker-deploy]
