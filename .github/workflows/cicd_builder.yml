@@ -1,0 +1,71 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "*" ]
+  pull_request:
+    branches: [ "main", "beta" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        language: [ "typescript", "rust", "csharp" ]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # Для TypeScript
+      - name: Setup Node.js (for TypeScript)
+        if: ${{ matrix.language == 'typescript' }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: Testing (for TypeScript)
+        if: ${{ matrix.language == 'typescript' }}
+        run: |
+          npm install
+          npm test
+
+      # Для Rust
+      - name: Setup Rust (for Rust)
+        if: ${{ matrix.language == 'rust' }}
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Testing (for Rust)
+        if: ${{ matrix.language == 'rust' }}
+        run: |
+          cargo build --release
+          cargo test --release
+
+      # Для C#
+      - name: Setup .NET (for C#)
+        if: ${{ matrix.language == 'csharp' }}
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '7.0.*'
+
+      - name: Testing (for C#)
+        if: ${{ matrix.language == 'csharp' }}
+        run: |
+          dotnet build
+          dotnet test
+
+  # notify-telegram:
+  #   needs: test
+  #   runs-on: ubuntu-latest
+  #   if: failure()
+
+  #   steps:
+  #     - name: Send Telegram Notification
+  #       run: |
+  #         curl -s -X POST https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage \
+  #         -d chat_id=$TELEGRAM_CHAT_ID \
+  #         -d text="Build or Test failed for ${{ github.event_name }} on branch ${{ github.ref_name }}"
+  #       env:
+  #         TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+  #         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
