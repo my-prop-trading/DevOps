@@ -68,31 +68,14 @@ jobs:
     if: failure()
     steps:
       - name: Send test error notification
-        # env:
-        #   TELEGRAM_NOTIFICATION_TOKEN: ${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}
-        #   TELEGRAM_GITHAB_CHAT_ID: ${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}
         run: |
-          language="${{ inputs.language }}"
-          project_name="${{ inputs.repository_name }}"
           user="Triggered by: ${{ github.actor }}"
           reason="Last commit: ${{ github.event.head_commit.message }}"
           date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
           pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         
-          # TELEGRAM_NOTIFICATION_TOKEN="${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}"
-          # TELEGRAM_GITHAB_CHAT_ID="${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
-
-          echo $language
-          echo $project_name
-          echo $user
-          echo $reason
-          echo $date
-          echo $pipeline_url
-          echo ${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}
-          echo ${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}
-        
           # send Telegram notification:
           curl --request POST --header "Content-Type: application/json" \
-            --data "{\"text\":\"[${{ inputs.language }}] Test error:\n\n>>> $project_name\n\n $user\n $reason\n $date\n\n Please check the pipeline here: $pipeline_url\"}" \
+            --data "{\"text\":\"[${{ inputs.language }}] Test error:\n\n>>>  ${{ inputs.repository_name }}\n\n $user\n $reason\n $date\n\n Please check the pipeline here: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
 
