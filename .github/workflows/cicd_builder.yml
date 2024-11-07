@@ -78,8 +78,9 @@ jobs:
           reason="Last commit: ${{ github.event.head_commit.message }}"
           date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
           pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          TELEGRAM_NOTIFICATION_TOKEN="${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}"
-          TELEGRAM_GITHAB_CHAT_ID="${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
+        
+          # TELEGRAM_NOTIFICATION_TOKEN="${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}"
+          # TELEGRAM_GITHAB_CHAT_ID="${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
 
           echo $language
           echo $project_name
@@ -87,11 +88,11 @@ jobs:
           echo $reason
           echo $date
           echo $pipeline_url
-          echo $TELEGRAM_NOTIFICATION_TOKEN
-          echo $TELEGRAM_GITHAB_CHAT_ID
+          echo ${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}
+          echo ${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}
         
           # send Telegram notification:
           curl --request POST --header "Content-Type: application/json" \
-            --data "{\"text\":\"[$language] Test error:\n\n>>> Project: $project_name\n$user\n$reason\n$date\n\nPlease check the pipeline here: $pipeline_url\"}" \
-            "https://api.telegram.org/bot$TELEGRAM_NOTIFICATION_TOKEN/sendMessage?chat_id=$TELEGRAM_GITHAB_CHAT_ID"
+            --data "{\"text\":\"[${{ inputs.language }}] Test error:\n\n>>> $project_name\n\n $user\n $reason\n $date\n\n Please check the pipeline here: $pipeline_url\"}" \
+            "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
 
