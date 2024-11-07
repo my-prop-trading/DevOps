@@ -86,6 +86,6 @@ jobs:
         
           # send Telegram notification:
           curl --request POST --header "Content-Type: application/json" \
-            --data "{\"text\":\"[${{ inputs.language }}] Test error:\n\n>>>  ${{ inputs.repository_name }}\n\n $user\n $reason\n $date\n\n Please check the pipeline here: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+            --data "{\"text\":\"[${{ inputs.language }}] Test error:\n\n>>>  ${{ inputs.repository_name }}\n\n $user\n $reason\n $date\n\n Please check action here: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
 
