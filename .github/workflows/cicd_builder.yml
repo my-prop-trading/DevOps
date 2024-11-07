@@ -18,7 +18,8 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-20.04
+    # runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -46,18 +47,27 @@ jobs:
       # #     unzip protoc-3.18.1-linux-x86_64.zip -d /usr/local
       # #     rm protoc-3.18.1-linux-x86_64.zip
         
+      # - name: Setup RUST (for Rust)
+      #   if: ${{ inputs.language == 'rust' }}
+      #   uses: actions-rs/toolchain@v1
+      #   with:
+      #     toolchain: stable
+      #     override: true
+
       - name: Setup RUST (for Rust)
         if: ${{ inputs.language == 'rust' }}
-        # uses: actions-rs/toolchain@v1
-        uses: actions/setup-rust@v1
+        uses: actions-rs/toolchain@v1
         with:
-          # toolchain: stable
-          # override: true
-          rust-version: stable
+          toolchain: stable
+          override: true
 
       - name: Testing (for Rust)
         if: ${{ inputs.language == 'rust' }}
         run: |
+          rustup update
+          rustup component add clippy
+          rustup install nightly 
+          cargo check
           cargo build --release
           cargo test --verbose
           rustc --version && cargo --version
