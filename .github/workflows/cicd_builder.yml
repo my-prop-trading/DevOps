@@ -38,6 +38,7 @@ jobs:
           npm test
 
       # for Rust
+      
       # - name: Install RUST dependencies
       #   run: |
       #     sudo apt update
@@ -47,19 +48,13 @@ jobs:
       # #     unzip protoc-3.18.1-linux-x86_64.zip -d /usr/local
       # #     rm protoc-3.18.1-linux-x86_64.zip
         
-      # - name: Setup RUST (for Rust)
-      #   if: ${{ inputs.language == 'rust' }}
-      #   uses: actions-rs/toolchain@v1
-      #   with:
-      #     toolchain: stable
-      #     override: true
 
       - name: Setup RUST (for Rust)
         if: ${{ inputs.language == 'rust' }}
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-          override: true
+          # override: true
 
       - name: Testing (for Rust)
         if: ${{ inputs.language == 'rust' }}
@@ -67,8 +62,6 @@ jobs:
           sudo apt-get update && sudo apt-get install -y protobuf-compiler
           rustup update
           cargo check
-    
-          # cargo build --release
           cargo test --verbose
           rustc --version && cargo --version
 
