@@ -1,9 +1,12 @@
-name: CI/CD Pipeline
+name: CI/CD Main Pipeline
 
 on:
   workflow_call:
     inputs:
       language:
+        required: true
+        type: string
+      repository_name:
         required: true
         type: string
 
@@ -14,7 +17,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Для TypeScript
+      # for TypeScript
       - name: Setup Node.js (for TypeScript)
         if: ${{ inputs.language == 'typescript' }}
         uses: actions/setup-node@v3
@@ -27,8 +30,8 @@ jobs:
           npm install
           npm test
 
-      # Для Rust
-      - name: Setup Rust (for Rust)
+      # for Rust
+      - name: Setup RUST (for Rust)
         if: ${{ inputs.language == 'rust' }}
         uses: actions-rs/toolchain@v1
         with:
@@ -40,7 +43,7 @@ jobs:
           cargo build --release
           cargo test --release
 
-      # Для C#
+      # for C#
       - name: Setup .NET (for C#)
         if: ${{ inputs.language == 'csharp' }}
         uses: actions/setup-dotnet@v3
@@ -53,17 +56,26 @@ jobs:
           dotnet build
           dotnet test
 
-  # notify-telegram:
-  #   needs: test
-  #   runs-on: ubuntu-latest
-  #   if: failure()
+  notify-telegram-test-error:
+    needs: test
+    runs-on: ubuntu-20.04
+    if: failure()
+    steps:
+      - name: Send test error notification
+        env:
+          TELEGRAM_NOTIFICATION_TOKEN: ${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}
+          TELEGRAM_GITHAB_CHAT_ID: ${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}
+        run: |
+          language="${{ inputs.language }}"
+          project_name="${{ github.repository }}"
+          project_name2="${{ inputs.repository_name }}"
+          user="Triggered by: ${{ github.actor }}"
+          reason="Last commit: ${{ github.event.head_commit.message }}"
+          date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
+          pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+  
+          # send Telegram notification:
+          curl --request POST --header "Content-Type: application/json" \
+            --data "{\"text\":\"[$language] Test error:\n\n>>> Project: $project_name\n$project_name2\n$user\n$reason\n$date\n\nPlease check the pipeline here: $pipeline_url\"}" \
+            "https://api.telegram.org/bot$TELEGRAM_NOTIFICATION_TOKEN/sendMessage?chat_id=$TELEGRAM_GITHAB_CHAT_ID"
 
-  #   steps:
-  #     - name: Send Telegram Notification
-  #       run: |
-  #         curl -s -X POST https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage \
-  #         -d chat_id=$TELEGRAM_CHAT_ID \
-  #         -d text="Build or Test failed for ${{ github.event_name }} on branch ${{ github.ref_name }}"
-  #       env:
-  #         TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-  #         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
