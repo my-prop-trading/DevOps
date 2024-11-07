@@ -64,12 +64,10 @@ jobs:
       - name: Testing (for Rust)
         if: ${{ inputs.language == 'rust' }}
         run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
+          sudo apt-get update && sudo apt-get install -y protobuf-compiler
           rustup update
-          # rustup install nightly 
           cargo check
-          cargo build --release
+          # cargo build --release
           cargo test --verbose
           rustc --version && cargo --version
 
