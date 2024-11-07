@@ -64,9 +64,10 @@ jobs:
       - name: Testing (for Rust)
         if: ${{ inputs.language == 'rust' }}
         run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
           rustup update
-          rustup component add clippy
-          rustup install nightly 
+          # rustup install nightly 
           cargo check
           cargo build --release
           cargo test --verbose
