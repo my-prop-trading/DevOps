@@ -2,52 +2,53 @@ name: CI/CD Pipeline
 
 on:
   workflow_call:
+    inputs:
+      language:
+        required: true
+        type: string
 
 jobs:
   test:
     runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        language: [ "typescript", "rust", "csharp" ]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
 
       # Для TypeScript
       - name: Setup Node.js (for TypeScript)
-        if: ${{ matrix.language == 'typescript' }}
+        if: ${{ inputs.language == 'typescript' }}
         uses: actions/setup-node@v3
         with:
           node-version: '16'
 
       - name: Testing (for TypeScript)
-        if: ${{ matrix.language == 'typescript' }}
+        if: ${{ inputs.language == 'typescript' }}
         run: |
           npm install
           npm test
 
       # Для Rust
       - name: Setup Rust (for Rust)
-        if: ${{ matrix.language == 'rust' }}
+        if: ${{ inputs.language == 'rust' }}
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
 
       - name: Testing (for Rust)
-        if: ${{ matrix.language == 'rust' }}
+        if: ${{ inputs.language == 'rust' }}
         run: |
           cargo build --release
           cargo test --release
 
       # Для C#
       - name: Setup .NET (for C#)
-        if: ${{ matrix.language == 'csharp' }}
+        if: ${{ inputs.language == 'csharp' }}
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: '7.0.*'
 
       - name: Testing (for C#)
-        if: ${{ matrix.language == 'csharp' }}
+        if: ${{ inputs.language == 'csharp' }}
         run: |
           dotnet build
           dotnet test
