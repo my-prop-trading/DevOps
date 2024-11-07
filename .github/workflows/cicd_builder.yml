@@ -73,7 +73,15 @@ jobs:
           reason="Last commit: ${{ github.event.head_commit.message }}"
           date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
           pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-  
+
+          echo $language
+          echo $project_name
+          echo $project_name2
+          echo $user
+          echo $reason
+          echo $date
+          echo $pipeline_url
+        
           # send Telegram notification:
           curl --request POST --header "Content-Type: application/json" \
             --data "{\"text\":\"[$language] Test error:\n\n>>> Project: $project_name\n$project_name2\n$user\n$reason\n$date\n\nPlease check the pipeline here: $pipeline_url\"}" \
