@@ -37,26 +37,29 @@ jobs:
           npm test
 
       # for Rust
-      - name: Install RUST dependencies
-        run: |
-          sudo apt update
-          sudo apt-get install -y protobuf-compiler gcc-10
-      #     sudo apt install -y wget unzip
-      #     wget https://github.com/protocolbuffers/protobuf/releases/download/v3.18.1/protoc-3.18.1-linux-x86_64.zip
-      #     unzip protoc-3.18.1-linux-x86_64.zip -d /usr/local
-      #     rm protoc-3.18.1-linux-x86_64.zip
+      # - name: Install RUST dependencies
+      #   run: |
+      #     sudo apt update
+      #     sudo apt-get install -y protobuf-compiler gcc-10
+      # #     sudo apt install -y wget unzip
+      # #     wget https://github.com/protocolbuffers/protobuf/releases/download/v3.18.1/protoc-3.18.1-linux-x86_64.zip
+      # #     unzip protoc-3.18.1-linux-x86_64.zip -d /usr/local
+      # #     rm protoc-3.18.1-linux-x86_64.zip
         
       - name: Setup RUST (for Rust)
         if: ${{ inputs.language == 'rust' }}
-        uses: actions-rs/toolchain@v1
+        # uses: actions-rs/toolchain@v1
+        uses: actions/setup-rust@v1
         with:
-          toolchain: stable
-          override: true
+          # toolchain: stable
+          # override: true
+          rust-version: stable
 
       - name: Testing (for Rust)
         if: ${{ inputs.language == 'rust' }}
         run: |
-          cargo test --release
+          cargo build --release
+          cargo test --verbose
           rustc --version && cargo --version
 
 
