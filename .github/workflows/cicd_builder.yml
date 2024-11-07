@@ -81,6 +81,8 @@ jobs:
           echo $reason
           echo $date
           echo $pipeline_url
+          echo $TELEGRAM_NOTIFICATION_TOKEN
+          echo $TELEGRAM_GITHAB_CHAT_ID
         
           # send Telegram notification:
           curl --request POST --header "Content-Type: application/json" \
