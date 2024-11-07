@@ -37,22 +37,32 @@ jobs:
           npm test
 
       # for Rust
+      - name: Install RUST dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y wget unzip
+          wget https://github.com/protocolbuffers/protobuf/releases/download/v3.18.1/protoc-3.18.1-linux-x86_64.zip
+          unzip protoc-3.18.1-linux-x86_64.zip -d /usr/local
+          rm protoc-3.18.1-linux-x86_64.zip
+        
       - name: Setup RUST (for Rust)
         if: ${{ inputs.language == 'rust' }}
         uses: actions-rs/toolchain@v1
-        # with:
-        #   toolchain: stable
         with:
           toolchain: stable
+        # with:
+        #   toolchain: stable
           override: true
-          components: rust-src, rustfmt
+        #   components: rust-src, rustfmt
 
       - name: Testing (for Rust)
         if: ${{ inputs.language == 'rust' }}
         run: |
-          sudo apt-get update && sudo apt-get install -y gcc
+          rustc --version
+          cargo --version
           cargo build --release
           cargo test --release
+        
 
       # for C#
       - name: Setup .NET (for C#)
