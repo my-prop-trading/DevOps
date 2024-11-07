@@ -40,8 +40,12 @@ jobs:
       - name: Setup RUST (for Rust)
         if: ${{ inputs.language == 'rust' }}
         uses: actions-rs/toolchain@v1
+        # with:
+        #   toolchain: stable
         with:
           toolchain: stable
+          override: true
+          components: rust-src, rustfmt
 
       - name: Testing (for Rust)
         if: ${{ inputs.language == 'rust' }}
