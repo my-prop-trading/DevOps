@@ -56,11 +56,16 @@ jobs:
       #     cargo test --verbose
       #     rustc --version && cargo --version
       
-      - name: Install dependences (for Rust)
+      # - name: Install dependences (for Rust)
+      #   if: ${{ inputs.language == 'rust' }}
+      #   run: |
+      #     sudo apt-get update && sudo apt-get install -y protobuf-compiler
+      #     echo "PROTOC='protoc --experimental_allow_proto3_optional'" >> $GITHUB_ENV
+          
+      - name: Install Protoc
         if: ${{ inputs.language == 'rust' }}
-        run: |
-          sudo apt-get update && sudo apt-get install -y protobuf-compiler
-          echo "PROTOC='protoc --experimental_allow_proto3_optional'" >> $GITHUB_ENV
+        uses: arduino/setup-protoc@v3
+      - run: openssl version  
 
       - name: Testing (for Rust)
         if: ${{ inputs.language == 'rust' }}
