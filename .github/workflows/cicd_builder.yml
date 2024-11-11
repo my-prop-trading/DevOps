@@ -16,80 +16,63 @@ on:
       TELEGRAM_GITHAB_CHAT_ID:
         required: false
 
+#-------------- TEST RUST ----------------#
 jobs:
-  test:
-    # runs-on: ubuntu-20.04
+  test-rust:
+    if: ${{ inputs.language == 'rust' }}
     runs-on: ubuntu-latest
+    name: Test code
+    outputs:
+      rust-status: ${{ job.status }}
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # for TypeScript
-      - name: Setup Node.js (for TypeScript)
-        if: ${{ inputs.language == 'typescript' }}
-        uses: actions/setup-node@v3
-        with:
-          node-version: '16'
-
-      - name: Testing (for TypeScript)
-        if: ${{ inputs.language == 'typescript' }}
-        run: |
-          npm install
-          npm test
-
-      # for Rust
-    
-      - name: Setup RUST (for Rust)
-        if: ${{ inputs.language == 'rust' }}
+      - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
           override: true
-
-      # - name: Testing (for Rust)
-      #   if: ${{ inputs.language == 'rust' }}
-      #   run: |
-      #     sudo apt-get update && sudo apt-get install -y protobuf-compiler
-      #     rustup update
-      #     cargo check
-      #     cargo test --verbose
-      #     rustc --version && cargo --version
-      
-      # - name: Install dependences (for Rust)
-      #   if: ${{ inputs.language == 'rust' }}
-      #   run: |
-      #     sudo apt-get update && sudo apt-get install -y protobuf-compiler
-      #     echo "PROTOC='protoc --experimental_allow_proto3_optional'" >> $GITHUB_ENV
           
       - name: Install Protoc
-        if: ${{ inputs.language == 'rust' }}
         uses: arduino/setup-protoc@v3
       - run: openssl version  
 
-      - name: Testing (for Rust)
-        if: ${{ inputs.language == 'rust' }}
+      - name: Start cargo test
         uses: actions-rs/cargo@v1
         continue-on-error: false
         with:
           command: test
 
-      # for C#
-      - name: Setup .NET (for C#)
-        if: ${{ inputs.language == 'csharp' }}
+#-------------- TEST C# ----------------#
+  test-csharp:
+    if: ${{ inputs.language == 'csharp' }}
+    runs-on: ubuntu-latest
+    name: Test code
+    outputs:
+      csharp-status: ${{ job.status }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3  
+
+      - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: '7.0.*'
 
-      - name: Testing (for C#)
-        if: ${{ inputs.language == 'csharp' }}
+      - name: Start csharp test
         run: |
           dotnet build
           dotnet test
 
+#-------------- Send ERROR test notification ----------------#
   notify-telegram-test-error:
-    needs: test
-    runs-on: ubuntu-20.04
+    needs: [test-rust, test-csharp]
+    runs-on: ubuntu-latest
+    name: Send ERROR test notification 
     if: failure()
     steps:
       - name: Send test error notification
