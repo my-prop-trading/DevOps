@@ -21,7 +21,7 @@ jobs:
   test-rust:
     if: ${{ inputs.language == 'rust' }}
     runs-on: ubuntu-latest
-    name: Test code
+    name: [RUST] Test code
     outputs:
       rust-status: ${{ job.status }}
 
@@ -50,7 +50,7 @@ jobs:
   test-csharp:
     if: ${{ inputs.language == 'csharp' }}
     runs-on: ubuntu-latest
-    name: Test code
+    name: [C#] Test code
     outputs:
       csharp-status: ${{ job.status }}
 
