@@ -95,7 +95,8 @@ jobs:
 #-------------- BUILD RUST ----------------#
   build-rust:
     # if: ${{ inputs.language == 'rust' }}
-    if: ${{ inputs.language == 'rust' && inputs.release_version != '' }}
+    # if: ${{ inputs.language == 'rust' && inputs.release_version != '' }}
+    if: ${{ inputs.language == 'rust' }} && github.event_name == 'release' && github.event.action == 'published' 
     runs-on: ${{ inputs.image }}
     name: "[RUST] Build code"
     # needs: release_trigger
