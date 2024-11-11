@@ -21,7 +21,7 @@ jobs:
   test-rust:
     if: ${{ inputs.language == 'rust' }}
     runs-on: ubuntu-latest
-    name: [RUST] Test code
+    name: "[RUST] Test code"
     outputs:
       rust-status: ${{ job.status }}
 
@@ -50,7 +50,7 @@ jobs:
   test-csharp:
     if: ${{ inputs.language == 'csharp' }}
     runs-on: ubuntu-latest
-    name: [C#] Test code
+    name: "[C#] Test code"
     outputs:
       csharp-status: ${{ job.status }}
 
@@ -72,7 +72,7 @@ jobs:
   notify-telegram-test-error:
     needs: [test-rust, test-csharp]
     runs-on: ubuntu-latest
-    name: Send ERROR test notification 
+    name: "Send ERROR test notification"
     if: failure()
     steps:
       - name: Send test error notification
@@ -86,4 +86,3 @@ jobs:
           curl --request POST --header "Content-Type: application/json" \
             --data "{\"text\":\"[${{ inputs.language }}] Test error:\n\n>>>  ${{ inputs.repository_name }}\n\n $user\n $reason\n $date\n\n Please check action here: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
-
