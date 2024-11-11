@@ -10,14 +10,14 @@ on:
         required: true
         type: string
       release_version:
-        required: true
+        required: false
         type: string
 
-    # secrets:
-    #   TELEGRAM_NOTIFICATION_TOKEN:
-    #     required: false
-    #   TELEGRAM_GITHAB_CHAT_ID:
-    #     required: false
+    secrets:
+      TELEGRAM_NOTIFICATION_TOKEN:
+        required: false
+      TELEGRAM_GITHAB_CHAT_ID:
+        required: false
 
 #-------------- TEST RUST ----------------#
 jobs:
