@@ -22,7 +22,8 @@ on:
 #-------------- TEST RUST ----------------#
 jobs:
   test-rust:
-    if: ${{ inputs.language == 'rust' }}
+    # if: ${{ inputs.language == 'rust' }}
+    if: ${{ inputs.language == 'rust' && inputs.release_version = '' }}
     runs-on: ubuntu-latest
     name: "[RUST] Test code"
     outputs:
@@ -89,3 +90,58 @@ jobs:
           curl --request POST --header "Content-Type: application/json" \
             --data "{\"text\":\"[${{ inputs.language }}] Test error:\n\n>>>  ${{ inputs.repository_name }}\n\n $user\n $reason\n $date\n\n Please check action here: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
+
+#-------------- BUILD RUST ----------------#
+  build-rust:
+    # if: ${{ inputs.language == 'rust' }}
+    if: ${{ inputs.language == 'rust' && inputs.release_version != '' }}
+    runs-on: ${{ inputs.image }}
+    name: "[RUST] Build code"
+    # needs: [release-published]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Get the version
+        id: get_version
+        run: echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_ENV
+
+      - name: Update version in Cargo.toml
+        run: sed -i -e 's/^version = .*/version = "${{ env.VERSION }}"/' Cargo.toml
+
+      - name: Install dependencies
+        run: |
+          sudo apt update -y
+          sudo apt install -y build-essential libglib2.0-dev pkg-config libssl-dev libgtk-3-dev javascriptcoregtk-4.1 libsoup-3.0 webkit2gtk-4.1
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Build project
+        run: cargo build --release
+
+      - name: Set up Docker and login
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push Docker image
+        run: |
+          docker build -t ${{ inputs.image_name }}:${{ env.VERSION }} .
+          docker push ${{ inputs.image_name }}:${{ env.VERSION }}
+
+      - name: Summary
+        run: |
+          echo "Docker image: ${{ inputs.image_name }}:${{ env.VERSION }}" >> $GITHUB_STEP_SUMMARY
