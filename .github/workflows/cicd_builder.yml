@@ -12,6 +12,9 @@ on:
       release_version:
         required: false
         type: string
+      image_name:
+        required: true
+        type: string
       image:
         required: false
         type: string
