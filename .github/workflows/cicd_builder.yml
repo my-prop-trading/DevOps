@@ -26,8 +26,6 @@ on:
 #-------------- TEST RUST ----------------#
 jobs:
   test-rust:
-    # if: ${{ inputs.language == 'rust' }}
-    # if: ${{ inputs.language == 'rust' }} && github.event_name != 'release'
     if: ${{ inputs.language == 'rust' && github.event_name != 'release' }}
     runs-on: ${{ inputs.image }}
     name: "[RUST] Test code"
@@ -57,8 +55,6 @@ jobs:
 
 #-------------- TEST C# ----------------#
   test-csharp:
-    # if: ${{ inputs.language == 'csharp' }}
-    # if: ${{ inputs.language == 'csharp' }} && github.event_name != 'release'
     if: ${{ inputs.language == 'csharp' && github.event_name != 'release' }}
     runs-on: ${{ inputs.image }}
     name: "[C#] Test code"
@@ -100,27 +96,23 @@ jobs:
 
 #-------------- BUILD RUST ----------------#
   build-rust:
-    # if: ${{ inputs.language == 'rust' }}
-    # if: ${{ inputs.language == 'rust' && inputs.release_version != '' }}
     if: ${{ inputs.language == 'rust' && github.event_name == 'release' && github.event.action == 'published' }}
     runs-on: ${{ inputs.image }}
     name: "[RUST] Build code"
-    # needs: release_trigger
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
 
       - name: Get the version
         id: get_version
         run: echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_ENV
 
       - name: Update version in Cargo.toml
-        run: sed -i -e 's/^version = .*/version = "${{ env.VERSION }}"/' Cargo.toml
+        run: sed -i -e 's/^version = .*/version = "${{ env.VERSION }}"/' Cargo.toml && cat Cargo.toml
 
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+      - run: openssl version
+      
       - name: Install dependencies
         run: |
           sudo apt update -y
