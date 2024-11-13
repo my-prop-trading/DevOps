@@ -9,6 +9,9 @@ on:
       service_type:
         required: true
         type: string
+      build_folder:
+        required: true
+        type: string
       repository_name:
         required: true
         type: string
@@ -119,12 +122,12 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Get release version
-        id: get_version
-        run: echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_ENV
+      # - name: Get release version
+      #   id: get_version
+      #   run: echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_ENV
 
       - name: Update version in Cargo.toml
-        run: sed -i -e 's/^version = .*/version = "${{ env.VERSION }}"/' Cargo.toml
+        run: sed -i -e 's/^version = .*/version = "${{ inputs.release_version }}"/' Cargo.toml && cat Cargo.toml
 
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
@@ -151,12 +154,12 @@ jobs:
       - name: Build project
         run: cargo build --release
 
-      - name: Docker login
-        env:
-          DOCKER_USER: ${{ secrets.DOCKER_USERNAME }}
-          DOCKER_PASS: ${{ secrets.DOCKER_PASSWORD }}
-        run: |          
-          echo "$DOCKER_PASS" | docker login --username "$DOCKER_USER" --password-stdin   
+      # - name: Docker login
+      #   env:
+      #     DOCKER_USER: ${{ secrets.DOCKER_USERNAME }}
+      #     DOCKER_PASS: ${{ secrets.DOCKER_PASSWORD }}
+      #   run: |          
+      #     echo "$DOCKER_PASS" | docker login --username "$DOCKER_USER" --password-stdin   
           
       # - name: Docker Build and Publish
       #   run: |          
@@ -168,7 +171,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: docker.io/myproptrading/${{ inputs.repository_name }}:${{ inputs.release_version }}
+          tags: docker.io/${{ inputs.image_name }}:${{ inputs.release_version }}
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
@@ -232,14 +235,14 @@ jobs:
           dotnet build --no-restore --configuration Release /p:AssemblyVersion=${{ inputs.release_version }}
           
       - name: Publish dotnet service
-        run: dotnet publish ./src/${{ inputs.repository_name }}/${{ inputs.repository_name }}.csproj --configuration Release /p:AssemblyVersion=${{ inputs.release_version }} --output ./publish-api
+        run: dotnet publish ./src/${{ inputs.build_folder }}/${{ inputs.build_folder }}.csproj --configuration Release /p:AssemblyVersion=${{ inputs.release_version }} --output ./publish-api
       
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v3
         with:
           context: ./publish-api
           push: true
-          tags: docker.io/myproptrading/${{ inputs.repository_name }}:${{ inputs.release_version }}
+          tags: docker.io/${{ inputs.image_name }}:${{ inputs.release_version }}
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
