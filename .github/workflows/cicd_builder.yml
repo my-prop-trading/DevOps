@@ -206,9 +206,11 @@ jobs:
         run: |
           # dotnet restore
           # dotnet build --no-restore --configuration Release /p:AssemblyVersion=${{ inputs.release_version }}
+          VERSION_WITHOUT_SUFFIX=$(echo ${{ inputs.release_version }} | sed 's/-.*//')
+          echo $VERSION_WITHOUT_SUFFIX_RC
           dotnet restore
           dotnet build --no-restore --configuration Release \
-            /p:AssemblyVersion=${{ inputs.release_version%%-* }} \
+            /p:AssemblyVersion=${VERSION_WITHOUT_SUFFIX} \
             /p:AssemblyInformationalVersion=${{ inputs.release_version }}
           
       - name: Publish dotnet service
