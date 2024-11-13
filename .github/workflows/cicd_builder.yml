@@ -25,7 +25,7 @@ on:
         required: false
         type: string
         default: ubuntu-latest
-
+        
     secrets:
       DOCKER_USERNAME:
         required: true
@@ -154,20 +154,7 @@ jobs:
       - name: Build project
         run: cargo build --release
 
-      # - name: Docker login
-      #   env:
-      #     DOCKER_USER: ${{ secrets.DOCKER_USERNAME }}
-      #     DOCKER_PASS: ${{ secrets.DOCKER_PASSWORD }}
-      #   run: |          
-      #     echo "$DOCKER_PASS" | docker login --username "$DOCKER_USER" --password-stdin   
-          
-      # - name: Docker Build and Publish
-      #   run: |          
-      #     docker build -t ${{ inputs.image_name }}:${{ env.VERSION }} .
-      #     docker push ${{ inputs.image_name }}:${{ env.VERSION }}
-      
-
-      - name: Log in to Docker Hub
+      - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
@@ -176,19 +163,9 @@ jobs:
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v3
         with:
-          context: .  # Контекст сборки
-          push: true  # Автоматически отправляет образ после сборки
-          tags: docker.io/${{ inputs.image_name }}:${{ env.VERSION }} 
-          
-      # - name: Build and Push Docker Image
-      #   uses: docker/build-push-action@v1
-      #   with:
-      #     username: ${{ secrets.DOCKER_USERNAME }}
-      #     password: ${{ secrets.DOCKER_PASSWORD }}
-      #     path: .
-      #     registry: docker.io
-      #     repository: ${{ inputs.image_name }}:${{ env.VERSION }}
-      #     tag_with_ref: true
+          context: .
+          push: true
+          tags: docker.io/${{ inputs.image_name }}:${{ env.VERSION }}
           
       - name: SUMMARY
         run: |
@@ -260,6 +237,19 @@ jobs:
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v3
+        with:
+          context: ./publish-api
+          push: true
+          tags: docker.io/${{ inputs.image_name }}:${{ env.VERSION }}
 
       - name: SUMMARY
         run: |
