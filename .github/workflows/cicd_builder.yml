@@ -192,7 +192,9 @@ jobs:
       
       - name: Get release version
         id: get_version
-        run: echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_ENV
+        run: |
+          echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_ENV
+          echo "VERSION-RC=$(echo ${{ inputs.release_version }} | sed 's/-.*//')"  >> $GITHUB_ENV
           
       - name: Setup .NET Core
         uses: actions/setup-dotnet@v3
@@ -202,19 +204,21 @@ jobs:
         env:
           NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
 
+      - run: echo ${{ env.VERSION }}
+      - run: echo ${{ env.VERSION-RC }}
+
       - name: Restore and Build dotnet service
         run: |
-          # dotnet restore
-          # dotnet build --no-restore --configuration Release /p:AssemblyVersion=${{ inputs.release_version }}
-          VERSION_WITHOUT_SUFFIX=$(echo ${{ inputs.release_version }} | sed 's/-.*//')
-          echo $VERSION_WITHOUT_SUFFIX_RC
           dotnet restore
-          dotnet build --no-restore --configuration Release \
-            /p:AssemblyVersion=${VERSION_WITHOUT_SUFFIX} \
-            /p:AssemblyInformationalVersion=${{ inputs.release_version }}
+          dotnet build --no-restore --configuration Release /p:AssemblyVersion=${{ env.VERSION-RC }}
+        
+          # dotnet restore
+          # dotnet build --no-restore --configuration Release \
+          #   /p:AssemblyVersion=${VERSION_WITHOUT_RC_SUFFIX} \
+          #   # /p:AssemblyInformationalVersion=${{ inputs.release_version }}
           
       - name: Publish dotnet service
-        run: dotnet publish ./${{ inputs.build_folder }}/${{ inputs.build_folder }}.csproj --configuration Release /p:AssemblyVersion=${{ inputs.release_version }} --output ./publish-api
+        run: dotnet publish ./${{ inputs.build_folder }}/${{ inputs.build_folder }}.csproj --configuration Release /p:AssemblyVersion=${{ env.VERSION-RC }} --output ./publish-api
 
       - name: Check Service dir
         run: |
