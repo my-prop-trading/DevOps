@@ -204,8 +204,12 @@ jobs:
 
       - name: Restore and Build dotnet service
         run: |
+          # dotnet restore
+          # dotnet build --no-restore --configuration Release /p:AssemblyVersion=${{ inputs.release_version }}
           dotnet restore
-          dotnet build --no-restore --configuration Release /p:AssemblyVersion=${{ inputs.release_version }}
+          dotnet build --no-restore --configuration Release \
+            /p:AssemblyVersion=${{ inputs.release_version%%-* }} \
+            /p:AssemblyInformationalVersion=${{ inputs.release_version }}
           
       - name: Publish dotnet service
         run: dotnet publish ./${{ inputs.build_folder }}/${{ inputs.build_folder }}.csproj --configuration Release /p:AssemblyVersion=${{ inputs.release_version }} --output ./publish-api
