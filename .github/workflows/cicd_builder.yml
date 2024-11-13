@@ -171,7 +171,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: docker.io/${{ inputs.image_name }}:${{ inputs.release_version }}
+          tags: docker.io/${{ inputs.image_name }}:${{ env.VERSION }}
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
