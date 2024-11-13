@@ -165,16 +165,27 @@ jobs:
       #   run: |          
       #     docker build -t ${{ inputs.image_name }}:${{ env.VERSION }} .
       #     docker push ${{ inputs.image_name }}:${{ env.VERSION }}
+      
 
+      # - name: Build and Push Docker Image
+      #   uses: docker/build-push-action@v3
+      #   with:
+      #     context: .
+      #     push: true
+      #     tags: docker.io/${{ inputs.image_name }}:${{ env.VERSION }}
+      #   env:
+      #     DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      #     DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+          
       - name: Build and Push Docker Image
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v1
         with:
-          context: .
-          push: true
-          tags: docker.io/${{ inputs.image_name }}:${{ env.VERSION }}
-        env:
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          path: .
+          registry: docker.io
+          repository: ${{ inputs.image_name }}:${{ env.VERSION }}
+          tag_with_ref: true
           
       - name: SUMMARY
         run: |
