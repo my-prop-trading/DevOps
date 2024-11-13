@@ -226,7 +226,7 @@ jobs:
           dotnet build --no-restore --configuration Release /p:AssemblyVersion=${{ inputs.release_version }}
           
       - name: Publish dotnet service
-        run: dotnet publish ./src/${{ inputs.build_folder }}/${{ inputs.build_folder }}.csproj --configuration Release /p:AssemblyVersion=${{ inputs.release_version }} --output ./publish-api
+        run: dotnet publish ./${{ inputs.build_folder }}/${{ inputs.build_folder }}.csproj --configuration Release /p:AssemblyVersion=${{ inputs.release_version }} --output ./publish-api
       
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v3
