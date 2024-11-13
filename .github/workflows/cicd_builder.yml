@@ -227,7 +227,9 @@ jobs:
           
       - name: Publish dotnet service
         run: dotnet publish ./${{ inputs.build_folder }}/${{ inputs.build_folder }}.csproj --configuration Release /p:AssemblyVersion=${{ inputs.release_version }} --output ./publish-api
-      
+
+      - name: Check Service dir
+        run: ls -la ./publish-api
       # - name: Build and Push Docker Image
       #   uses: docker/build-push-action@v3
       #   with:
