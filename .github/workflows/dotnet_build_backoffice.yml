@@ -12,6 +12,9 @@ on:
       image_name:
         required: true
         type: string
+      build_folder:
+        required: true
+        type: string
     secrets:
       DOCKER_USERNAME:
         required: true
@@ -54,7 +57,7 @@ jobs:
       run: dotnet test --no-build --configuration Release
 
     - name: Publish Service
-      run: dotnet publish ./${{ inputs.repository_name }}/${{ inputs.repository_name }}.csproj --configuration Release /p:AssemblyVersion=${{ inputs.release_version }} --output ./publish-api
+      run: dotnet publish ./${{ inputs.build_folder }}/${{ inputs.build_folder }}.csproj --configuration Release /p:AssemblyVersion=${{ inputs.release_version }} --output ./publish-api
 
     - name: Check Service dir
       run: ls ./publish-api
