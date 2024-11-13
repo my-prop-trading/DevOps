@@ -220,7 +220,6 @@ jobs:
       - name: Check Service dir
         run: |
           ls -la ./publish-api
-          ls -la ./publish-api/test
           echo "--------"
           ls -la
 
