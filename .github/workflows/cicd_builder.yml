@@ -127,7 +127,7 @@ jobs:
         run: echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_ENV
 
       - name: Update version in Cargo.toml
-        run: sed -i -e 's/^version = .*/version = "${{ inputs.release_version }}"/' Cargo.toml
+        run: sed -i -e 's/^version = .*/version = "${{ env.VERSION }}"/' Cargo.toml
 
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
