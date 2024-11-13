@@ -182,7 +182,9 @@ jobs:
       
       - name: Get release version
         id: get_version
-        run: echo ::set-output name=VERSION::${{ inputs.release_version }} >> $GITHUB_ENV && echo $GITHUB_ENV
+        run: |
+          echo ::set-output name=VERSION::${{ inputs.release_version }}
+          echo ${{ steps.get_version.outputs.VERSION }}
           
       - name: Setup .NET Core
         uses: actions/setup-dotnet@v3
@@ -249,7 +251,7 @@ jobs:
         with:
           context: ./publish-api
           push: true
-          tags: docker.io/${{ inputs.image_name }}:${{ env.VERSION }}
+          tags: docker.io/${{ inputs.image_name }}:${{ steps.get_version.outputs.VERSION }}
 
         # uses: docker/build-push-action@v1
         # with:
