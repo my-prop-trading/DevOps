@@ -51,8 +51,19 @@ jobs:
       rust-status: ${{ job.status }}
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+
+      - name: Cache cargo build
+        # if: ${{ inputs.use_cache && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/beta' }}
+        if: ${{ inputs.use_cache && github.ref_name != 'main' && github.ref_name != 'beta' }}
+        uses: actions/cache@v3
+        with:
+          path: |
+            target
+            .cargo
+          key: ${{ runner.os }}-cargo-test-${{ inputs.repository_name }}-${{ hashFiles('**/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-test-${{ inputs.repository_name }}-
 
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
@@ -122,6 +133,18 @@ jobs:
     name: "[RUST] Build code"
     steps:
       - uses: actions/checkout@v4
+
+      - name: Cache cargo build
+        # if: ${{ inputs.use_cache && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/beta' }}
+        if: ${{ inputs.use_cache && github.ref_name != 'main' && github.ref_name != 'beta' }}
+        uses: actions/cache@v3
+        with:
+          path: |
+            target
+            .cargo
+          key: ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}-${{ hashFiles('**/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}-
 
       - name: Set up Rust toolchain
         uses: actions-rs/toolchain@v1
