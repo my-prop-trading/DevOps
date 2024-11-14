@@ -53,6 +53,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Debug use_cache value
+        run: echo "use_cache is set to ${{ inputs.use_cache }}"
+
       - name: Cache cargo build
         # if: ${{ inputs.use_cache && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/beta' }}
         if: ${{ inputs.use_cache == 'yes' && github.ref_name != 'main' && github.ref_name != 'beta' }}
