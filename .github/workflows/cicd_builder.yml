@@ -87,7 +87,7 @@ jobs:
 
       - name: Start csharp test
         run: |
-          cd ${{ inputs.build_folder }}
+          # cd ${{ inputs.build_folder }}
           dotnet build
           dotnet test
 
