@@ -53,6 +53,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Dump context
+        uses: crazy-max/ghaction-dump-context@v2
+
       - name: Debug use_cache value
         run: echo "use_cache is set to ${{ inputs.use_cache }}"
 
