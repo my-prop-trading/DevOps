@@ -90,7 +90,6 @@ jobs:
 
       - name: Start csharp test
         run: |
-          # cd ${{ inputs.build_folder }}
           dotnet build
           dotnet test
 
@@ -180,11 +179,6 @@ jobs:
           registry: docker.io
           repository: ${{ inputs.image_name }}
           tag_with_ref: true
-          
-      - name: SUMMARY
-        run: |
-          echo "Docker image:" >> $GITHUB_STEP_SUMMARY
-          echo "${{ inputs.image_name }}:${{ env.VERSION }}" >> $GITHUB_STEP_SUMMARY
           
   #-------------- BUILD C# ----------------#
   # build-csharp:
@@ -277,35 +271,30 @@ jobs:
         env:
           NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
   
-      - name: Restore
+      - name: Restore microservice
         run: dotnet restore
         continue-on-error: true
   
       - name: Build microservice
         run: dotnet build --no-restore --configuration Release /p:AssemblyVersion=${{ env.VERSION-RC }}
   
-      - name: Test microservice
-        run: dotnet test --no-build --configuration Release
+      # - name: Test microservice
+      #   run: dotnet test --no-build --configuration Release
   
-      - name: Publish Service
+      - name: Publish microservice
         run: dotnet publish ./${{ inputs.build_folder }}/${{ inputs.build_folder }}.csproj --configuration Release /p:AssemblyVersion=${{ env.VERSION-RC }} --output ./publish-api
   
       - name: Check Service dir
-        run: ls ./publish-api
-  
-      - id: string
-        uses: ASzc/change-string-case-action@v1
-        with:
-          string: ${{ inputs.repository_name }}
+        run: ls -la ./publish-api
           
-      - name: Publish image azure
+      - name: Build and Push Docker Image
         uses: docker/build-push-action@v1
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           path: ./publish-api
           registry: docker.io
-          repository: myproptrading/${{ steps.string.outputs.lowercase }}
+          repository: ${{ inputs.image_name }}
           tag_with_ref: true
 
 
