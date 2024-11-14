@@ -58,7 +58,7 @@ jobs:
 
       - name: Cache cargo build
         # if: ${{ inputs.use_cache && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/beta' }}
-        if: ${{ inputs.use_cache == 'yes' && github.ref_name != 'main' && github.ref_name != 'beta' }}
+        if: ${{ inputs.use_cache == 'true' && github.ref_name != 'main' && github.ref_name != 'beta' }}
         uses: actions/cache@v3
         with:
           path: |
@@ -139,7 +139,7 @@ jobs:
 
       - name: Cache cargo build
         # if: ${{ inputs.use_cache && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/beta' }}
-        if: ${{ inputs.use_cache == 'yes' && github.ref_name != 'main' && github.ref_name != 'beta' }}
+        if: ${{ inputs.use_cache == 'true' && github.ref_name != 'main' && github.ref_name != 'beta' }}
         uses: actions/cache@v3
         with:
           path: |
