@@ -90,13 +90,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Dump context
-        uses: crazy-max/ghaction-dump-context@v2
+      # - name: Check dump all context
+      #   uses: crazy-max/ghaction-dump-context@v2
 
       - name: Cache cargo build
-        # if: ${{ inputs.use_cache && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/beta' }}
         if: ${{ inputs.active_branch != 'main' && inputs.active_branch != 'beta' }}
-        # if: ${{ github.event.release.target_commitish != 'main' && github.event.release.target_commitish != 'beta' }}
         uses: actions/cache@v3
         with:
           path: |
@@ -175,13 +173,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Dump context
-        uses: crazy-max/ghaction-dump-context@v2
+      # - name: Check dump all context
+      #   uses: crazy-max/ghaction-dump-context@v2
         
       - name: Cache cargo build
-        # if: ${{ inputs.use_cache && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/beta' }}
         if: ${{ inputs.active_branch != 'main' && inputs.active_branch != 'beta' }}
-        # if: ${{ github.event.release.target_commitish != 'main' && github.event.release.target_commitish != 'beta' }}
         uses: actions/cache@v3
         with:
           path: |
