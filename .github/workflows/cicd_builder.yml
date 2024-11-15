@@ -173,7 +173,7 @@ jobs:
         
       - name: Cache cargo build
         # if: ${{ inputs.use_cache && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/beta' }}
-        if: ${{ github.ref_name != 'main' && github.ref_name != 'beta' && github.event_name == 'release'  }}
+        if: ${{ github.ref_name != 'main' || github.ref_name != 'beta'  }}
         uses: actions/cache@v3
         with:
           path: |
