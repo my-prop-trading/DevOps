@@ -168,6 +168,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Dump context
+        uses: crazy-max/ghaction-dump-context@v2
+        
       - name: Cache cargo build
         # if: ${{ inputs.use_cache && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/beta' }}
         if: ${{ github.ref_name != 'main' && github.ref_name != 'beta' && github.event_name == 'release'  }}
