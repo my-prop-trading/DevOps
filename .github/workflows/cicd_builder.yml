@@ -73,8 +73,11 @@ jobs:
         uses: actions/cache@v3
         with:
           path: |
-            target/debug
-            .cargo
+            ~/.cargo/
+            ~/target/
+          
+            # target
+            # .cargo
           key: ${{ env.NEW_TEST_CACHE_KEY }}
           restore-keys: |
             ${{ runner.os }}-cargo-test-${{ inputs.repository_name }}-
@@ -181,8 +184,11 @@ jobs:
         uses: actions/cache@v3
         with:
           path: |
-            target
-            .cargo
+            ~/.cargo/
+            ~/target/
+          
+            # target
+            # .cargo
           key: ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}-${{ hashFiles('**/Cargo.toml') }}
           restore-keys: |
             ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}-
