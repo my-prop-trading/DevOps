@@ -73,11 +73,8 @@ jobs:
         uses: actions/cache@v3
         with:
           path: |
-            ~/.cargo/
-            ~/target/
-          
-            # target
-            # .cargo
+            target
+            .cargo
           key: ${{ env.NEW_TEST_CACHE_KEY }}
           restore-keys: |
             ${{ runner.os }}-cargo-test-${{ inputs.repository_name }}-
@@ -106,6 +103,7 @@ jobs:
           key: ${{ runner.os }}-cargo-test-${{ inputs.repository_name }}-${{ hashFiles('**/Cargo.toml') }}
           restore-keys: |
             ${{ runner.os }}-cargo-test-${{ inputs.repository_name }}-
+            ${{ runner.os }}-cargo-test-
 
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
@@ -184,14 +182,12 @@ jobs:
         uses: actions/cache@v3
         with:
           path: |
-            ~/.cargo/
-            ~/target/
-          
-            # target
-            # .cargo
+            target
+            .cargo
           key: ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}-${{ hashFiles('**/Cargo.toml') }}
           restore-keys: |
             ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}-
+            ${{ runner.os }}-cargo-build-
 
       - name: Set up Rust toolchain
         uses: actions-rs/toolchain@v1
