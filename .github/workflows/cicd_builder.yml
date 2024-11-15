@@ -12,7 +12,7 @@ on:
       build_folder:
         required: false
         type: string
-      use_cache:
+      clear_cache:
         required: false
         type: string
       repository_name:
@@ -41,10 +41,44 @@ on:
       TELEGRAM_GITHAB_CHAT_ID:
         required: false
 
-#-------------- TEST RUST ----------------#
 jobs:
+
+#-------------- CLEAR CARGO CACHE ----------------#
+  clear-rust-cache:
+    if: ${{ inputs.language == 'rust' && inputs.clear_cache == 'yes' }}
+    runs-on: ${{ inputs.image }}
+    steps:
+      - name: Generate New Cache Key for Build
+        id: new-build-cache-key
+        run: echo "NEW_BUILD_CACHE_KEY=$(date +%s)-build" >> $GITHUB_ENV
+
+      - name: Generate New Cache Key for Test
+        id: new-test-cache-key
+        run: echo "NEW_TEST_CACHE_KEY=$(date +%s)-test" >> $GITHUB_ENV
+
+      - name: Create empty cache for Build
+        uses: actions/cache@v3
+        with:
+          path: |
+            target/release
+            .cargo
+          key: ${{ env.NEW_BUILD_CACHE_KEY }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}-
+
+      - name: Create empty cache for Test
+        uses: actions/cache@v3
+        with:
+          path: |
+            target/debug
+            .cargo
+          key: ${{ env.NEW_TEST_CACHE_KEY }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-test-${{ inputs.repository_name }}-
+         
+#-------------- TEST RUST ----------------#
   test-rust:
-    if: ${{ inputs.language == 'rust' && github.event_name != 'release' }}
+    if: ${{ inputs.language == 'rust' && github.event_name != 'release' && inputs.clear_cache != 'yes' }}
     runs-on: ${{ inputs.image }}
     name: "[RUST] Test code"
     outputs:
@@ -53,12 +87,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Debug use_cache value
-        run: echo "use_cache is set to ${{ inputs.use_cache }}"
+      # - name: Debug use_cache value
+      #   run: echo "use_cache is set to ${{ inputs.use_cache }}"
 
       - name: Cache cargo build
         # if: ${{ inputs.use_cache && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/beta' }}
-        if: ${{ inputs.use_cache == 'true' && github.ref_name != 'main' && github.ref_name != 'beta' }}
+        if: ${{ github.ref_name != 'main' && github.ref_name != 'beta' }}
         uses: actions/cache@v3
         with:
           path: |
@@ -131,7 +165,7 @@ jobs:
 
 #-------------- BUILD RUST ----------------#
   build-rust:
-    if: ${{ inputs.language == 'rust' && github.event_name == 'release' && github.event.action == 'published' }}
+    if: ${{ inputs.language == 'rust' && github.event_name == 'release' && github.event.action == 'published' && inputs.clear_cache != 'yes' }}
     runs-on: ${{ inputs.image }}
     name: "[RUST] Build code"
     steps:
@@ -139,7 +173,7 @@ jobs:
 
       - name: Cache cargo build
         # if: ${{ inputs.use_cache && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/beta' }}
-        if: ${{ inputs.use_cache == 'true' && github.ref_name != 'main' && github.ref_name != 'beta' }}
+        if: ${{ github.ref_name != 'main' && github.ref_name != 'beta' }}
         uses: actions/cache@v3
         with:
           path: |
@@ -172,16 +206,6 @@ jobs:
       - run: sudo apt update && sudo apt upgrade -y
         continue-on-error: true
       - run: sudo apt-get install javascriptcoregtk-4.1 libsoup-3.0 webkit2gtk-4.1 -y
-
-      # - name: Cache Rust dependencies
-      #   uses: actions/cache@v2
-      #   with:
-      #     path: |
-      #       ~/.cargo/registry
-      #       ~/.cargo/git
-      #     key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      #     restore-keys: |
-      #       ${{ runner.os }}-cargo-
 
       - name: Build project
         run: cargo build --release
