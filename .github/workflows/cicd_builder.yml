@@ -198,11 +198,9 @@ jobs:
           # restore-keys: |
           #   ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}
           #   ${{ runner.os }}-cargo-build-
-          key: ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}-${{ inputs.active_branch }}-${{ env.VERSION }}-${{ hashFiles('**/Cargo.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}-${{ inputs.active_branch }}-
-            ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}-
-            ${{ runner.os }}-cargo-build-
+          key: ${{ runner.os }}-cargo-build
+          # restore-keys: |
+          #   ${{ runner.os }}-cargo-build
 
       - name: Set up Rust toolchain
         uses: actions-rs/toolchain@v1
