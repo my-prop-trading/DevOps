@@ -179,8 +179,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check dump all context
-        uses: crazy-max/ghaction-dump-context@v2
+      # - name: Check dump all context
+      #   uses: crazy-max/ghaction-dump-context@v2
       
       - name: Get release version
         id: get_version
