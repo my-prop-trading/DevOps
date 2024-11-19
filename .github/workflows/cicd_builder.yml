@@ -184,7 +184,7 @@ jobs:
       
       - name: Get release version
         id: get_version
-        run: echo "VERSION2=${{ inputs.release_version }}" >> $GITHUB_ENV
+        run: echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_ENV
         
       - name: Cache cargo build
         if: ${{ inputs.active_branch != 'main' && inputs.active_branch != 'beta' }}
