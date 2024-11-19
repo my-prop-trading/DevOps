@@ -181,6 +181,10 @@ jobs:
 
       # - name: Check dump all context
       #   uses: crazy-max/ghaction-dump-context@v2
+      
+      - name: Get release version
+        id: get_version
+        run: echo "VERSION2=${{ inputs.release_version }}" >> $GITHUB_ENV
         
       - name: Cache cargo build
         if: ${{ inputs.active_branch != 'main' && inputs.active_branch != 'beta' }}
@@ -194,7 +198,7 @@ jobs:
           # restore-keys: |
           #   ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}
           #   ${{ runner.os }}-cargo-build-
-          key: ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}-${{ inputs.active_branch }}-${{ inputs.release_version }}-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}-${{ inputs.active_branch }}-${{ env.VERSION }}-${{ hashFiles('**/Cargo.toml') }}
           restore-keys: |
             ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}-${{ inputs.active_branch }}-
             ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}-
@@ -205,9 +209,9 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Get release version
-        id: get_version
-        run: echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_ENV
+      # - name: Get release version
+      #   id: get_version
+      #   run: echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_ENV
 
       - name: Update version in Cargo.toml
         run: sed -i -e 's/^version = .*/version = "${{ env.VERSION }}"/' Cargo.toml
