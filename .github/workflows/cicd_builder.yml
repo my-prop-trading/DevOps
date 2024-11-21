@@ -239,9 +239,10 @@ jobs:
             VERSION="${{ inputs.build_version }}"
           fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "VERSION-RC=$(echo $VERSION | sed 's/-.*//')" >> $GITHUB_ENV
+          VERSION_RC=$(echo $VERSION | sed 's/-.*//')
+          echo "VERSION-RC=$VERSION_RC" >> $GITHUB_ENV
           echo "Using version: $VERSION"
-          echo "Using version RC: $VERSION-RC"
+          echo "Using version RC: $VERSION_RC"
           
       - name: Change version in config file
         run: |
