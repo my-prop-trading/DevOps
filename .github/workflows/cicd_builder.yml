@@ -262,7 +262,7 @@ jobs:
           path: .
           registry: docker.io
           repository: ${{ inputs.image_name }}
-          tag_with_ref: true
+          tags: docker.io/${{ inputs.image_name }}:${{ env.VERSION }}
           
   #-------------- BUILD C# ----------------#
   build-csharp:
