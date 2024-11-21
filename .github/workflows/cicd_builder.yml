@@ -81,7 +81,8 @@ jobs:
          
 #-------------- TEST RUST ----------------#
   test-rust:
-    if: ${{ inputs.language == 'rust' && github.event_name != 'release' && github.event.action != 'published' || inputs.language == 'rust' && inputs.build_version == '' }}
+    #if: ${{ inputs.language == 'rust' && github.event_name != 'release' && github.event.action != 'published' || inputs.language == 'rust' && inputs.build_version == '' }}
+    if: ${{ inputs.language == 'rust' && github.event_name != 'release' && github.event.action != 'published' && inputs.build_version == '' }}
     runs-on: ${{ inputs.image }}
     name: "[RUST] Test code"
     outputs:
@@ -185,18 +186,8 @@ jobs:
       #   id: get_version
       #   run: echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_ENV
 
-      - name: Get release version1
-        id: get_version1
-        run: |
-          if [ -z "${{ inputs.build_version }}" ]; then
-            echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_ENV
-          else
-            echo "VERSION=${{ inputs.build_version }}" >> $GITHUB_ENV
-          fi
-          echo "Using version: ${{ env.VERSION }}"
-
-      - name: Get release version2
-        id: get_version2
+      - name: Get release version
+        id: get_version
         run: |
           if [ -z "${{ inputs.build_version }}" ]; then
             VERSION="${{ inputs.release_version }}"
