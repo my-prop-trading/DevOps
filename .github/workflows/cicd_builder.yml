@@ -24,6 +24,9 @@ on:
       release_version:
         required: false
         type: string
+      commit_message:
+        required: false
+        type: string      
       image_name:
         required: true
         type: string
@@ -45,7 +48,7 @@ on:
         required: false
         
 # run-name: "${{ github.event.inputs.build_version }} ---> ${{ github.event.head_commit.message }}"
-# run-name: "${{ inputs.build_version || inputs.release_version }} ---> ${{ env.COMMIT_MESSAGE }}"
+run-name: "${{ inputs.build_version || inputs.release_version }} ---> ${{ inputs.commit_message }}"
 
 
 jobs:
