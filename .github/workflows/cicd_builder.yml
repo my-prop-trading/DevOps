@@ -195,20 +195,23 @@ jobs:
             VERSION="${{ inputs.build_version }}"
           fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Using version: $VERSION"
+          echo "-------- Using version: $VERSION"
 
       - name: Get last commit message
         id: get_commit
-        run: echo "COMMIT_MESSAGE=$(git log -1 --pretty=%B)" >> $GITHUB_ENV
+        run: |
+          echo "COMMIT_MESSAGE=$(git log -1 --pretty=%B)" >> $GITHUB_ENV
+          echo "-------- COMMIT_MESSAGE: ${{ env.COMMIT_MESSAGE }}"
 
       - name: Set workflow display name
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           BUILD_VERSION=${{ inputs.build_version }}
-          echo "BUILD_VERSION: $BUILD_VERSION"
+          echo "-------- BUILD_VERSION: $BUILD_VERSION"
           COMMIT_MESSAGE=$(git log -1 --pretty=%B | tr -d '\n')
           NEW_NAME="${BUILD_VERSION} - ${COMMIT_MESSAGE}"
+          echo "-------- GITHUB_TOKEN: $GITHUB_TOKEN"
           curl -X PATCH \
             -H "Authorization: Bearer $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github+json" \
