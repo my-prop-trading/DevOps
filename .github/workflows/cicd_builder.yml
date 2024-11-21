@@ -13,7 +13,7 @@ on:
         required: false
         type: string
       active_branch:
-        required: true
+        required: false
         type: string
       build_version:
         required: false
