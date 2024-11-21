@@ -97,6 +97,13 @@ jobs:
 
       # - name: Check dump all context
       #   uses: crazy-max/ghaction-dump-context@v2
+      
+      - name: Get last commit message
+        id: get_commit
+        run: |
+          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+          echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
+          echo "-------- COMMIT_MESSAGE: $COMMIT_MESSAGE"
 
       - name: Cache cargo build
         if: ${{ inputs.active_branch != 'main' && inputs.active_branch != 'beta' }}
