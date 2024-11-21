@@ -201,7 +201,7 @@ jobs:
         id: get_commit
         run: |
           echo "COMMIT_MESSAGE=$(git log -1 --pretty=%B)" >> $GITHUB_ENV
-          echo "-------- COMMIT_MESSAGE: ${{ env.COMMIT_MESSAGE }}"
+          echo "-------- COMMIT_MESSAGE: $COMMIT_MESSAGE"
 
       - name: Set workflow display name
         env:
