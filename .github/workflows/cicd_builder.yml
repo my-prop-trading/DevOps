@@ -185,14 +185,25 @@ jobs:
       #   id: get_version
       #   run: echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_ENV
 
+      # - name: Get release version
+      #   id: get_version
+      #   run: |
+      #     if [ -z "${{ inputs.build_version }}" ]; then
+      #       echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_ENV
+      #     else
+      #       echo "VERSION=${{ inputs.build_version }}" >> $GITHUB_ENV
+      #     fi
+      #     echo "Using version: $VERSION"
+
       - name: Get release version
         id: get_version
         run: |
           if [ -z "${{ inputs.build_version }}" ]; then
-            echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_ENV
+            VERSION="${{ inputs.release_version }}"
           else
-            echo "VERSION=${{ inputs.build_version }}" >> $GITHUB_ENV
+            VERSION="${{ inputs.build_version }}"
           fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Using version: $VERSION"
         
       - name: Cache cargo build
