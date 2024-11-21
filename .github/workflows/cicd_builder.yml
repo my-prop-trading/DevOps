@@ -15,7 +15,7 @@ on:
       active_branch:
         required: true
         type: string
-      clear_cache:
+      build_version:
         required: false
         type: string
       repository_name:
@@ -46,42 +46,42 @@ on:
 
 jobs:
 
-#-------------- CLEAR CARGO CACHE ----------------#
-  clear-rust-cache:
-    if: ${{ inputs.language == 'rust' && inputs.clear_cache == 'yes' }}
-    runs-on: ${{ inputs.image }}
-    steps:
-      - name: Generate New Cache Key for Build
-        id: new-build-cache-key
-        run: echo "NEW_BUILD_CACHE_KEY=$(date +%s)-build" >> $GITHUB_ENV
+# #-------------- CLEAR CARGO CACHE ----------------#
+#   clear-rust-cache:
+#     if: ${{ inputs.language == 'rust' && inputs.clear_cache == 'yes' }}
+#     runs-on: ${{ inputs.image }}
+#     steps:
+#       - name: Generate New Cache Key for Build
+#         id: new-build-cache-key
+#         run: echo "NEW_BUILD_CACHE_KEY=$(date +%s)-build" >> $GITHUB_ENV
 
-      - name: Generate New Cache Key for Test
-        id: new-test-cache-key
-        run: echo "NEW_TEST_CACHE_KEY=$(date +%s)-test" >> $GITHUB_ENV
+#       - name: Generate New Cache Key for Test
+#         id: new-test-cache-key
+#         run: echo "NEW_TEST_CACHE_KEY=$(date +%s)-test" >> $GITHUB_ENV
 
-      - name: Create empty cache for Build
-        uses: actions/cache@v3
-        with:
-          path: |
-            target/release
-            .cargo
-          key: ${{ env.NEW_BUILD_CACHE_KEY }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}-
+#       - name: Create empty cache for Build
+#         uses: actions/cache@v3
+#         with:
+#           path: |
+#             target/release
+#             .cargo
+#           key: ${{ env.NEW_BUILD_CACHE_KEY }}
+#           restore-keys: |
+#             ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}-
 
-      - name: Create empty cache for Test
-        uses: actions/cache@v3
-        with:
-          path: |
-            target
-            .cargo
-          key: ${{ env.NEW_TEST_CACHE_KEY }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-test-${{ inputs.repository_name }}-
+#       - name: Create empty cache for Test
+#         uses: actions/cache@v3
+#         with:
+#           path: |
+#             target
+#             .cargo
+#           key: ${{ env.NEW_TEST_CACHE_KEY }}
+#           restore-keys: |
+#             ${{ runner.os }}-cargo-test-${{ inputs.repository_name }}-
          
 #-------------- TEST RUST ----------------#
   test-rust:
-    if: ${{ inputs.language == 'rust' && github.event_name != 'release' && inputs.clear_cache != 'yes' }}
+    if: ${{ inputs.language == 'rust' && github.event_name != 'release' && github.event.action != 'published' || inputs.language == 'rust' && inputs.build_version == '' }}
     runs-on: ${{ inputs.image }}
     name: "[RUST] Test code"
     outputs:
@@ -100,9 +100,8 @@ jobs:
           path: |
             target
             .cargo
-          key: ${{ runner.os }}-cargo-test-${{ inputs.repository_name }}-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo-test-${{ inputs.repository_name }}
           restore-keys: |
-            ${{ runner.os }}-cargo-test-${{ inputs.repository_name }}-
             ${{ runner.os }}-cargo-test-
           # key: ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}-${{ inputs.active_branch }}-${{ inputs.release_version }}-${{ hashFiles('**/Cargo.toml') }}
           # restore-keys: |
@@ -173,7 +172,7 @@ jobs:
 
 #-------------- BUILD RUST ----------------#
   build-rust:
-    if: ${{ inputs.language == 'rust' && github.event_name == 'release' && github.event.action == 'published' && inputs.clear_cache != 'yes' }}
+    if: ${{ inputs.language == 'rust' && github.event_name == 'release' && github.event.action == 'published' || inputs.language == 'rust' && inputs.build_version != '' }}
     runs-on: ${{ inputs.image }}
     name: "[RUST] Build code"
     steps:
@@ -182,9 +181,19 @@ jobs:
       - name: Check dump all context
         uses: crazy-max/ghaction-dump-context@v2
       
+      # - name: Get release version
+      #   id: get_version
+      #   run: echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_ENV
+
       - name: Get release version
         id: get_version
-        run: echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_ENV
+        run: |
+          if [ -z "${{ inputs.build_version }}" ]; then
+            echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_ENV
+          else
+            echo "VERSION=${{ inputs.build_version }}" >> $GITHUB_ENV
+          fi
+          echo "Using version: $VERSION"
         
       - name: Cache cargo build
         if: ${{ inputs.active_branch != 'main' && inputs.active_branch != 'beta' }}
@@ -193,14 +202,10 @@ jobs:
           path: |
             target
             .cargo
-          # # key: ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}-${{ hashFiles('**/Cargo.toml') }}
-          # key: ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}
-          # restore-keys: |
-          #   ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}
-          #   ${{ runner.os }}-cargo-build-
-          key: ${{ runner.os }}-cargo-build
-          # restore-keys: |
-          #   ${{ runner.os }}-cargo-build
+          # key: ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-build-
 
       - name: Set up Rust toolchain
         uses: actions-rs/toolchain@v1
