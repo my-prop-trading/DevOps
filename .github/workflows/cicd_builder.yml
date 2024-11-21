@@ -46,49 +46,10 @@ on:
         required: false
       TELEGRAM_GITHAB_CHAT_ID:
         required: false
-        
-# run-name: "${{ github.event.inputs.build_version }} ---> ${{ github.event.head_commit.message }}"
-# run-name: "${{ inputs.build_version || inputs.release_version }} ---> ${{ inputs.commit_message }}"
 
-
-jobs:
-
-# #-------------- CLEAR CARGO CACHE ----------------#
-#   clear-rust-cache:
-#     if: ${{ inputs.language == 'rust' && inputs.clear_cache == 'yes' }}
-#     runs-on: ${{ inputs.image }}
-#     steps:
-#       - name: Generate New Cache Key for Build
-#         id: new-build-cache-key
-#         run: echo "NEW_BUILD_CACHE_KEY=$(date +%s)-build" >> $GITHUB_ENV
-
-#       - name: Generate New Cache Key for Test
-#         id: new-test-cache-key
-#         run: echo "NEW_TEST_CACHE_KEY=$(date +%s)-test" >> $GITHUB_ENV
-
-#       - name: Create empty cache for Build
-#         uses: actions/cache@v3
-#         with:
-#           path: |
-#             target/release
-#             .cargo
-#           key: ${{ env.NEW_BUILD_CACHE_KEY }}
-#           restore-keys: |
-#             ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}-
-
-#       - name: Create empty cache for Test
-#         uses: actions/cache@v3
-#         with:
-#           path: |
-#             target
-#             .cargo
-#           key: ${{ env.NEW_TEST_CACHE_KEY }}
-#           restore-keys: |
-#             ${{ runner.os }}-cargo-test-${{ inputs.repository_name }}-
-         
+jobs:         
 #-------------- TEST RUST ----------------#
   test-rust:
-    #if: ${{ inputs.language == 'rust' && github.event_name != 'release' && github.event.action != 'published' || inputs.language == 'rust' && inputs.build_version == '' }}
     if: ${{ inputs.language == 'rust' && github.event_name != 'release' && github.event.action != 'published' && inputs.build_version == '' }}
     runs-on: ${{ inputs.image }}
     name: "[RUST] Test code"
@@ -119,11 +80,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}-
             ${{ runner.os }}-cargo-test-
-          # key: ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}-${{ inputs.active_branch }}-${{ inputs.release_version }}-${{ hashFiles('**/Cargo.toml') }}
-          # restore-keys: |
-          #   ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}-${{ inputs.active_branch }}-
-          #   ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}-
-          #   ${{ runner.os }}-cargo-build-
 
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
@@ -196,10 +152,6 @@ jobs:
 
       # - name: Check dump all context
       #   uses: crazy-max/ghaction-dump-context@v2
-      
-      # - name: Get release version
-      #   id: get_version
-      #   run: echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_ENV
 
       - name: Get release version
         id: get_version
@@ -210,37 +162,14 @@ jobs:
             VERSION="${{ inputs.build_version }}"
           fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "-------- Using version: $VERSION"
+          echo "Using version: $VERSION"
 
       # - name: Get last commit message
       #   id: get_commit
       #   run: |
-      #     echo "COMMIT_MESSAGE=$(git log -1 --pretty=%B)" >> $GITHUB_ENV
-      #     echo "-------- COMMIT_MESSAGE: $COMMIT_MESSAGE"
-
-      - name: Get last commit message
-        id: get_commit
-        run: |
-          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
-          echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
-          echo "-------- COMMIT_MESSAGE: $COMMIT_MESSAGE"
-
-
-
-      # - name: Set workflow display name
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   run: |
-      #     BUILD_VERSION=${{ inputs.build_version }}
-      #     echo "-------- BUILD_VERSION: $BUILD_VERSION"
-      #     COMMIT_MESSAGE=$(git log -1 --pretty=%B | tr -d '\n')
-      #     NEW_NAME="${BUILD_VERSION} - ${COMMIT_MESSAGE}"
-      #     echo "-------- GITHUB_TOKEN: $GITHUB_TOKEN"
-      #     curl -X PATCH \
-      #       -H "Authorization: Bearer $GITHUB_TOKEN" \
-      #       -H "Accept: application/vnd.github+json" \
-      #       https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }} \
-      #       -d "{\"name\": \"${NEW_NAME}\"}"
+      #     COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+      #     echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
+      #     echo "Last commit: $COMMIT_MESSAGE"
         
       - name: Cache cargo build
         if: ${{ inputs.active_branch != 'main' && inputs.active_branch != 'beta' }}
@@ -258,10 +187,6 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-
-      # - name: Get release version
-      #   id: get_version
-      #   run: echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_ENV
 
       - name: Update version in Cargo.toml
         run: sed -i -e 's/^version = .*/version = "${{ env.VERSION }}"/' Cargo.toml
@@ -299,11 +224,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # - name: Get release version
+      #   id: get_version
+      #   run: |
+      #     echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_ENV
+      #     echo "VERSION-RC=$(echo ${{ inputs.release_version }} | sed 's/-.*//')"  >> $GITHUB_ENV
+
       - name: Get release version
         id: get_version
         run: |
-          echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_ENV
-          echo "VERSION-RC=$(echo ${{ inputs.release_version }} | sed 's/-.*//')"  >> $GITHUB_ENV
+          if [ -z "${{ inputs.build_version }}" ]; then
+            VERSION="${{ inputs.release_version }}"
+          else
+            VERSION="${{ inputs.build_version }}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "VERSION-RC=$(echo $VERSION | sed 's/-.*//')" >> $GITHUB_ENV
+          echo "Using version: $VERSION"
+          echo "Using version RC: $VERSION-RC"
           
       - name: Change version in config file
         run: |
@@ -344,7 +282,7 @@ jobs:
           tag_with_ref: true
 
 
-
+#-------------- DEPLOY ----------------#
 
 
   
