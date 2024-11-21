@@ -100,7 +100,7 @@ jobs:
 
 #-------------- TEST C# ----------------#
   test-csharp:
-    if: ${{ inputs.language == 'csharp' && github.event_name != 'release' }}
+    if: ${{ inputs.language == 'csharp' && github.event_name != 'release' && github.event.action != 'published' && inputs.build_version == '' }}
     runs-on: ${{ inputs.image }}
     name: "[C#] Test code"
     outputs:
@@ -218,7 +218,7 @@ jobs:
           
   #-------------- BUILD C# ----------------#
   build-csharp:
-    if: ${{ inputs.language == 'csharp' && github.event_name == 'release' && github.event.action == 'published' }}
+    if: ${{ inputs.language == 'csharp' && github.event_name == 'release' && github.event.action == 'published' || inputs.language == 'csharp' && inputs.build_version != '' }}
     runs-on: ${{ inputs.image }}
     name: "[C#] Build code"
     steps:
