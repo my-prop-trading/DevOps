@@ -48,7 +48,7 @@ on:
         required: false
         
 # run-name: "${{ github.event.inputs.build_version }} ---> ${{ github.event.head_commit.message }}"
-run-name: "${{ inputs.build_version || inputs.release_version }} ---> ${{ inputs.commit_message }}"
+# run-name: "${{ inputs.build_version || inputs.release_version }} ---> ${{ inputs.commit_message }}"
 
 
 jobs:
