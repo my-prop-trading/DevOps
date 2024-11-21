@@ -178,25 +178,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check dump all context
-        uses: crazy-max/ghaction-dump-context@v2
+      # - name: Check dump all context
+      #   uses: crazy-max/ghaction-dump-context@v2
       
       # - name: Get release version
       #   id: get_version
       #   run: echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_ENV
 
-      # - name: Get release version
-      #   id: get_version
-      #   run: |
-      #     if [ -z "${{ inputs.build_version }}" ]; then
-      #       echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_ENV
-      #     else
-      #       echo "VERSION=${{ inputs.build_version }}" >> $GITHUB_ENV
-      #     fi
-      #     echo "Using version: $VERSION"
+      - name: Get release version1
+        id: get_version1
+        run: |
+          if [ -z "${{ inputs.build_version }}" ]; then
+            echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_ENV
+          else
+            echo "VERSION=${{ inputs.build_version }}" >> $GITHUB_ENV
+          fi
+          echo "Using version: ${{ env.VERSION }}"
 
-      - name: Get release version
-        id: get_version
+      - name: Get release version2
+        id: get_version2
         run: |
           if [ -z "${{ inputs.build_version }}" ]; then
             VERSION="${{ inputs.release_version }}"
