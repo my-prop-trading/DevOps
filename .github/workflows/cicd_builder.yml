@@ -297,7 +297,6 @@ jobs:
     # if: ${{ (github.event_name == 'release' && github.event.action == 'published') || inputs.build_version != '' }}
     # if: ${{ success() && (needs.build-csharp.result == 'success' || needs.build-rust.result == 'success') }} 
     if: success() && (needs.build-csharp.result == 'success' || needs.build-rs.result == 'success')
-   
     runs-on: ${{ inputs.image }}
     name: "Deploy on server"
 
@@ -318,7 +317,8 @@ jobs:
             pwd
             ls -la
             git pull
-            reg=s"|/${{ inputs.repository_name }}:[0-9].*|/${{ inputs.repository_name }}:${{ inputs.build_version }}|g"
+            # reg=s"|/${{ inputs.repository_name }}:[0-9].*|/${{ inputs.repository_name }}:${{ inputs.build_version }}|g"
+            reg=s"|/${{ inputs.repository_name }}:[0-9].*|/${{ inputs.repository_name }}:${{ env.VERSION }}|g"
             echo $reg
             cat docker-compose.yaml
             echo "---------------------------------------"
@@ -328,7 +328,8 @@ jobs:
             #sleep 10
             git status
             if git status | grep -q modified; then
-              git commit -a -m "Update ${{ inputs.repository_name }}:${{ inputs.build_version }}"
+              # git commit -a -m "Update ${{ inputs.repository_name }}:${{ inputs.build_version }}"
+              git commit -a -m "Update ${{ inputs.repository_name }}:${{ env.VERSION }}"
               git push
             fi
           EOF
