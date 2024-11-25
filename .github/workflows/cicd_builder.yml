@@ -152,7 +152,7 @@ jobs:
 
 #-------------- BUILD RUST ----------------#
   build-rust:
-    if: ${{ inputs.language == 'rust' && github.event_name == 'release' && github.event.action == 'published' || inputs.language == 'rust' && inputs.build_version != '' }}
+    if: ${{ (inputs.language == 'rust' && github.event_name == 'release' && github.event.action == 'published') || (inputs.language == 'rust' && inputs.build_version != '') }}
     runs-on: ${{ inputs.image }}
     name: "[RUST] Build code"
     steps:
@@ -226,7 +226,7 @@ jobs:
           
   #-------------- BUILD C# ----------------#
   build-csharp:
-    if: ${{ inputs.language == 'csharp' && github.event_name == 'release' && github.event.action == 'published' || inputs.language == 'csharp' && inputs.build_version != '' }}
+    if: ${{ (inputs.language == 'csharp' && github.event_name == 'release' && github.event.action == 'published') || (inputs.language == 'csharp' && inputs.build_version != '') }}
     runs-on: ${{ inputs.image }}
     name: "[C#] Build code"
     steps:
@@ -295,7 +295,7 @@ jobs:
   deploy-on-server:
     needs: [build-csharp, build-rust]
     # if: ${{ inputs.active_branch != 'main' && inputs.active_branch != 'beta' }}
-    if: ${{ github.event_name == 'release' && github.event.action == 'published' || inputs.build_version != '' }}
+    if: ${{ (github.event_name == 'release' && github.event.action == 'published') || inputs.build_version != '' }}
     # if: ${{ success() && (needs.build-csharp.result == 'success' || needs.build-rust.result == 'success') }}
     runs-on: ${{ inputs.image }}
     name: "Deploy on server"
