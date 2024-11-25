@@ -283,7 +283,52 @@ jobs:
           tags: ${{ env.VERSION }}
 
 
-#-------------- DEPLOY ----------------#
+  #-------------- DEPLOY TO SERVER ----------------#
+  deploy-on-server:
+    needs: [build-csharp, build-rust]
+    # if: ${{ inputs.active_branch != 'main' && inputs.active_branch != 'beta' }}
+    if: ${{ github.event_name == 'release' && github.event.action == 'published' || && inputs.build_version != '' }}
+    # if: ${{ success() && (needs.build-csharp.result == 'success' || needs.build-rust.result == 'success') }}
+    runs-on: ${{ inputs.image }}
+    name: "Deploy on server"
+
+    steps:
+      # Установить SSH доступ
+      - name: Configure SSH
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.SSH_KEY_FOR_DEPLOY }}
+      
+
+      - name: Deploy to alpha
+        if: ${{ inputs.active_branch != 'main' && inputs.active_branch != 'beta' }}
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF'
+            echo "------ Starting deployment... ------"
+            cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
+            pwd
+            ls -la
+            git pull
+            reg=s"|/${{ inputs.repository_name }}:[0-9].*|/${{ inputs.repository_name }}:${{ inputs.build_version }}|g"
+            echo $reg
+            find . -type f -name "*.*ml" -exec sed -i -r $reg {} \;
+            docker-compose up -d
+            sleep 10
+            if git status | grep -q modified; then
+              git commit -a -m "Update ${{ inputs.repository_name }}:${{ inputs.build_version }}"
+              git push
+            fi
+          EOF
+
+      # - name: Send Telegram Notification
+      #   env:
+      #     TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}
+      #     TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}
+      #   run: |
+      #     curl -X POST \
+      #     https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage \
+      #     -d chat_id=$TELEGRAM_CHAT_ID \
+      #     -d text="Deployment successful for ${{ inputs.repository_name }}:${{ inputs.build_version }}"
 
 
   
