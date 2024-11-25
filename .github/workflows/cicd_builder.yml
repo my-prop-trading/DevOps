@@ -304,14 +304,10 @@ jobs:
 
   #-------------- DEPLOY TO SERVER ----------------#
   deploy-on-server:
-    needs: [ build-csharp, build-rust ]
-    # needs: [ build-csharp ]
-    if: needs.build-csharp.outputs.success == 'true' || needs.build-rust.outputs.success == 'true'
+    # needs: [ build-csharp, build-rust ]
+    # if: needs.build-csharp.outputs.success == 'true' || needs.build-rust.outputs.success == 'true'
     
-    # if: ${{ (github.event_name == 'release' && github.event.action == 'published') || inputs.build_version != '' }}
-    # if: ${{ success() && (needs.build-csharp.result == 'success' || needs.build-rust.result == 'success') }} 
-    
-    # if: success() && (needs.build-csharp.result == 'success' || needs.build-rs.result == 'success')
+    if: ${{ (github.event_name == 'release' && github.event.action == 'published') || (inputs.build_version != '') }}
     runs-on: ${{ inputs.image }}
     name: "Deploy on server"
 
