@@ -296,7 +296,8 @@ jobs:
     needs: [ build-rust, build-csharp ]
     # if: ${{ (github.event_name == 'release' && github.event.action == 'published') || inputs.build_version != '' }}
     # if: ${{ success() && (needs.build-csharp.result == 'success' || needs.build-rust.result == 'success') }} 
-    if: success() && (needs.build-csharp.result == 'success' || needs.build-rs.result == 'success')
+    
+    # if: success() && (needs.build-csharp.result == 'success' || needs.build-rs.result == 'success')
     runs-on: ${{ inputs.image }}
     name: "Deploy on server"
 
