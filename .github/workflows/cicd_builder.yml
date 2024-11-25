@@ -293,7 +293,7 @@ jobs:
 
   #-------------- DEPLOY TO SERVER ----------------#
   deploy-on-server:
-    needs: [build-csharp, build-rust]
+    needs: [build-csharp]
     # if: ${{ inputs.active_branch != 'main' && inputs.active_branch != 'beta' }}
     if: ${{ (github.event_name == 'release' && github.event.action == 'published') || inputs.build_version != '' }}
     # if: ${{ success() && (needs.build-csharp.result == 'success' || needs.build-rust.result == 'success') }}
