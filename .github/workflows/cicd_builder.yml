@@ -46,14 +46,14 @@ on:
         required: false
       TELEGRAM_GITHAB_CHAT_ID:
         required: false
-      # SSH_KEY_FOR_DEPLOY:
-      #   required: true
-      # SSH_ACCESS_ALPHA_01:
-      #   required: true
-      # SSH_ACCESS_BETA_01:
-      #   required: true
-      # SSH_ACCESS_DEMO_01:
-      #   required: true
+      SSH_KEY_FOR_DEPLOY:
+        required: true
+      SSH_ACCESS_ALPHA_01:
+        required: true
+      SSH_ACCESS_BETA_01:
+        required: true
+      SSH_ACCESS_DEMO_01:
+        required: true
         
 jobs:         
 #-------------- TEST RUST ----------------#
