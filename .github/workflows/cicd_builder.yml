@@ -305,13 +305,11 @@ jobs:
   #-------------- DEPLOY TO SERVER ----------------#
   deploy-on-server:
     needs: [ build-csharp, build-rust ]
-    if: success()
     # if: needs.build-csharp.outputs.success == 'true' || needs.build-rust.outputs.success == 'true'
-    
     # if: ${{ (github.event_name == 'release' && github.event.action == 'published') || (inputs.build_version != '') }}
     runs-on: ${{ inputs.image }}
     name: "Deploy on server"
-
+    if: success()
     steps:
       - name: Configure SSH
         uses: webfactory/ssh-agent@v0.5.3
