@@ -155,6 +155,8 @@ jobs:
     if: ${{ (inputs.language == 'rust' && github.event_name == 'release' && github.event.action == 'published') || (inputs.language == 'rust' && inputs.build_version != '') }}
     runs-on: ${{ inputs.image }}
     name: "[RUST] Build code"
+    outputs:
+      success: ${{ steps.set-output.outputs.success }}
     steps:
       - uses: actions/checkout@v4
 
@@ -229,6 +231,8 @@ jobs:
     if: ${{ (inputs.language == 'csharp' && github.event_name == 'release' && github.event.action == 'published') || (inputs.language == 'csharp' && inputs.build_version != '') }}
     runs-on: ${{ inputs.image }}
     name: "[C#] Build code"
+    outputs:
+      success: ${{ steps.set-output.outputs.success }}
     steps:
       - uses: actions/checkout@v4
 
@@ -294,6 +298,8 @@ jobs:
   #-------------- DEPLOY TO SERVER ----------------#
   deploy-on-server:
     needs: [ build-rust, build-csharp ]
+    if: ${{ needs.build-csharp.outputs.success == 'true' || needs.build-rs.outputs.success == 'true' }}
+    
     # if: ${{ (github.event_name == 'release' && github.event.action == 'published') || inputs.build_version != '' }}
     # if: ${{ success() && (needs.build-csharp.result == 'success' || needs.build-rust.result == 'success') }} 
     
