@@ -46,14 +46,14 @@ on:
         required: false
       TELEGRAM_GITHAB_CHAT_ID:
         required: false
-      SSH_KEY_FOR_DEPLOY:
-        required: true
-      SSH_ACCESS_ALPHA_01:
-        required: true
-      SSH_ACCESS_BETA_01:
-        required: true
-      SSH_ACCESS_DEMO_01:
-        required: true
+      # SSH_KEY_FOR_DEPLOY:
+      #   required: true
+      # SSH_ACCESS_ALPHA_01:
+      #   required: true
+      # SSH_ACCESS_BETA_01:
+      #   required: true
+      # SSH_ACCESS_DEMO_01:
+      #   required: true
         
 jobs:         
 #-------------- TEST RUST ----------------#
@@ -308,7 +308,7 @@ jobs:
           ssh-private-key: ${{ secrets.SSH_KEY_FOR_DEPLOY }}
       
 
-      - name: Deploy to alpha
+      - name: Deploy to ALPHA
         if: ${{ inputs.active_branch != 'main' && inputs.active_branch != 'beta' }}
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF'
