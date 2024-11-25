@@ -311,9 +311,13 @@ jobs:
             git pull
             reg=s"|/${{ inputs.repository_name }}:[0-9].*|/${{ inputs.repository_name }}:${{ inputs.build_version }}|g"
             echo $reg
+            cat docker-compose.yaml
+            echo "---------------------------------------"
             find . -type f -name "*.*ml" -exec sed -i -r $reg {} \;
+            cat docker-compose.yaml
             docker-compose up -d
-            sleep 10
+            #sleep 10
+            git status
             if git status | grep -q modified; then
               git commit -a -m "Update ${{ inputs.repository_name }}:${{ inputs.build_version }}"
               git push
