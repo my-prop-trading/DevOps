@@ -155,8 +155,10 @@ jobs:
     if: ${{ (inputs.language == 'rust' && github.event_name == 'release' && github.event.action == 'published') || (inputs.language == 'rust' && inputs.build_version != '') }}
     runs-on: ${{ inputs.image }}
     name: "[RUST] Build code"
+    # outputs:
+    #   success: ${{ steps.set-success.outputs.success }}
     outputs:
-      success: ${{ steps.set-success.outputs.success }}
+      rust-build-status: ${{ job.status }}
     steps:
       - uses: actions/checkout@v4
 
@@ -226,17 +228,19 @@ jobs:
           repository: ${{ inputs.image_name }}
           tags: ${{ env.VERSION }}
 
-      - name: Set success output
-        id: set-success
-        run: echo "::set-output name=success::true"
+      # - name: Set success output
+      #   id: set-success
+      #   run: echo "::set-output name=success::true"
           
   #-------------- BUILD C# ----------------#
   build-csharp:
     if: ${{ (inputs.language == 'csharp' && github.event_name == 'release' && github.event.action == 'published') || (inputs.language == 'csharp' && inputs.build_version != '') }}
     runs-on: ${{ inputs.image }}
     name: "[C#] Build code"
+    # outputs:
+    #   success: ${{ steps.set-success.outputs.success }}
     outputs:
-      success: ${{ steps.set-success.outputs.success }}
+      csharp-build-status: ${{ job.status }}
     steps:
       - uses: actions/checkout@v4
 
@@ -298,15 +302,15 @@ jobs:
           repository: ${{ inputs.image_name }}
           tags: ${{ env.VERSION }}
 
-      - name: Set success output
-        id: set-success
-        run: echo "::set-output name=success::true"
+      # - name: Set success output
+      #   id: set-success
+      #   run: echo "::set-output name=success::true"
 
   #-------------- DEPLOY TO SERVER ----------------#
   deploy-on-server:
-    # needs: [ build-csharp, build-rust ]
+    needs: [ build-csharp, build-rust ]
     # if: needs.build-csharp.outputs.success == 'true' || needs.build-rust.outputs.success == 'true'
-    if: ${{ (github.event_name == 'release' && github.event.action == 'published') || (inputs.build_version != '') }}
+    # if: ${{ (github.event_name == 'release' && github.event.action == 'published') || (inputs.build_version != '') }}
     # needs: [ build-csharp, build-rust ]
     # if: needs.build-csharp.outputs.success == 'true' || needs.build-rust.outputs.success == 'true'
     runs-on: ${{ inputs.image }}
