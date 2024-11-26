@@ -147,6 +147,9 @@ jobs:
           date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
           pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         
+          # Получаем информацию о `needs` в виде JSON
+          needs_json='${{ toJSON(needs) }}'
+        
           # Создаем массив для зафейлившихся джоб
           failed_jobs=()
           
