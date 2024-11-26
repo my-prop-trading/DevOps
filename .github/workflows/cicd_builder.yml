@@ -102,8 +102,7 @@ jobs:
     name: "[C#] Test code"
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3  
+      - uses: actions/checkout@v3  
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
@@ -125,6 +124,8 @@ jobs:
     name: "Send ERROR notification"
     if: failure()
     steps:
+      - uses: actions/checkout@v3  
+      
       - name: Get last commit message
         id: get_commit
         run: |
