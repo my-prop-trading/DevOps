@@ -61,21 +61,11 @@ jobs:
     if: ${{ inputs.language == 'rust' && github.event_name != 'release' && github.event.action != 'published' && inputs.build_version == '' }}
     runs-on: ${{ inputs.image }}
     name: "[RUST] Test code"
-    outputs:
-      rust-status: ${{ job.status }}
-
     steps:
       - uses: actions/checkout@v4
 
       # - name: Check dump all context
       #   uses: crazy-max/ghaction-dump-context@v2
-      
-      - name: Get last commit message
-        id: get_commit
-        run: |
-          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
-          echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
-          echo "-------- COMMIT_MESSAGE: $COMMIT_MESSAGE"
 
       - name: Cache cargo build
         if: ${{ inputs.active_branch != 'main' && inputs.active_branch != 'beta' }}
@@ -84,10 +74,8 @@ jobs:
           path: |
             target
             .cargo
-          # key: ${{ runner.os }}-cargo-test-${{ inputs.repository_name }}-${{ hashFiles('**/Cargo.toml') }}
           key: ${{ runner.os }}-cargo-test-${{ inputs.repository_name }}
           restore-keys: |
-            # ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}-
             ${{ runner.os }}-cargo-test-
 
       - name: Setup Rust
@@ -112,8 +100,6 @@ jobs:
     if: ${{ inputs.language == 'csharp' && github.event_name != 'release' && github.event.action != 'published' && inputs.build_version == '' }}
     runs-on: ${{ inputs.image }}
     name: "[C#] Test code"
-    outputs:
-      csharp-status: ${{ job.status }}
 
     steps:
       - name: Checkout Code
@@ -135,38 +121,39 @@ jobs:
 #-------------- Send ERROR test notification ----------------#
   notify-telegram-error:
     needs: [test-rust, test-csharp, build-rust, build-csharp, deploy-on-server]
-    # needs: [ test-rust, test-csharp ]
     runs-on: ${{ inputs.image }}
     name: "Send ERROR notification"
     if: failure()
     steps:
-      - name: Send test error notification
+      - name: Get last commit message
+        id: get_commit
+        run: |
+          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+          echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
+          echo "-------- COMMIT_MESSAGE: $COMMIT_MESSAGE"
+          
+      - name: Send error notification
         run: |
           user="Triggered by: ${{ github.actor }}"
-          reason="Last commit: ${{ github.event.head_commit.message }}"
+          # reason="Last commit: ${{ github.event.head_commit.message }}"
+          reason="Last commit: ${{ env.COMMIT_MESSAGE }}"
           date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
           pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo 
         
-          # Получаем информацию о `needs` в виде JSON
           needs_json='${{ toJSON(needs) }}'
-        
-          # Создаем массив для зафейлившихся джоб
           failed_jobs=()
           
-          # Используем jq для извлечения имен джоб с result == failure
           while IFS= read -r job; do
             failed_jobs+=("$job")
           done < <(echo "$needs_json" | jq -r 'to_entries[] | select(.value.result == "failure") | .key')
           
-          # Проверяем, есть ли зафейлившиеся джобы
           if [[ ${#failed_jobs[@]} -gt 0 ]]; then
             job_names=$(IFS=, ; echo "${failed_jobs[*]}")
-          
             echo "Failed job names: $job_names"
-
-            
+    
             curl --request POST --header "Content-Type: application/json" \
-              --data "{\"text\":\"[ERROR] GitHub CICD Info:\n\n   Action: $job_names\n   Project: ${{ inputs.repository_name }}\n\n $user\n $reason\n $date\n\n Please check action here:\n\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+              --data "{\"text\":\"[ERROR] GitHub CICD Info:\n\n >>>   $job_names\n\n Project: ${{ inputs.repository_name }}\n $user\n $reason\n $date\n\n Please check action here:\n\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
               "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
           else
             echo "No jobs failed."
