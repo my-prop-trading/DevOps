@@ -155,9 +155,9 @@ jobs:
     if: ${{ (inputs.language == 'rust' && github.event_name == 'release' && github.event.action == 'published') || (inputs.language == 'rust' && inputs.build_version != '') }}
     runs-on: ${{ inputs.image }}
     name: "[RUST] Build code"
-    outputs:
-      success: ${{ steps.set-success.outputs.success }}
-      rust-build-status: ${{ job.status }}
+    # outputs:
+    #   success: ${{ steps.set-success.outputs.success }}
+    #   rust-build-status: ${{ job.status }}
     steps:
       - uses: actions/checkout@v4
 
@@ -227,18 +227,18 @@ jobs:
           repository: ${{ inputs.image_name }}
           tags: ${{ env.VERSION }}
 
-      - name: Set success output
-        id: set-success
-        run: echo "::set-output name=success::true"
+      # - name: Set success output
+      #   id: set-success
+      #   run: echo "::set-output name=success::true"
           
   #-------------- BUILD C# ----------------#
   build-csharp:
     if: ${{ (inputs.language == 'csharp' && github.event_name == 'release' && github.event.action == 'published') || (inputs.language == 'csharp' && inputs.build_version != '') }}
     runs-on: ${{ inputs.image }}
     name: "[C#] Build code"
-    outputs:
-      success: ${{ steps.set-success.outputs.success }}
-      csharp-build-status: ${{ job.status }}
+    # outputs:
+    #   success: ${{ steps.set-success.outputs.success }}
+    #   csharp-build-status: ${{ job.status }}
     steps:
       - uses: actions/checkout@v4
 
@@ -300,26 +300,22 @@ jobs:
           repository: ${{ inputs.image_name }}
           tags: ${{ env.VERSION }}
 
-      - name: Set success output
-        id: set-success
-        run: echo "::set-output name=success::true"
+      # - name: Set success output
+      #   id: set-success
+      #   run: echo "::set-output name=success::true"
 
   #-------------- DEPLOY TO SERVER ----------------#
   deploy-on-server:
-    # if: ${{ (success() && github.event_name == 'release' && github.event.action == 'published') || (success() && inputs.build_version != '') }}
     needs: [ build-csharp, build-rust ]
-    if: |
-      always()
-      && contains(needs.*.result, 'success')
-      && !contains(needs.*.result, 'failure')
+    if: ${{ always() && contains(needs.*.result, 'success') && !(contains(needs.*.result, 'failure')) }}
+    runs-on: ${{ inputs.image }}
+    name: "Deploy on server"
     # needs: [ build-csharp]
     # if: job.build-csharp.outputs.success == 'true' || job.build-rust.outputs.success == 'true'
     # if: ${{ (success() && github.job == build-csharp) || (success() && github.job == build-rust) }}
     # if: ${{ (github.event_name == 'release' && github.event.action == 'published') || (inputs.build_version != '') }}
     # needs: [ build-csharp, build-rust ]
     # if: needs.build-csharp.outputs.success == 'true' || needs.build-rust.outputs.success == 'true'
-    runs-on: ${{ inputs.image }}
-    name: "Deploy on server"
     # if: success()
     steps:
       - name: Configure SSH
