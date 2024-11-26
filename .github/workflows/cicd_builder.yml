@@ -12,7 +12,7 @@ on:
       build_folder:
         required: false
         type: string
-      active_branch:
+      deploy_contur:
         required: false
         type: string
       build_version:
@@ -68,7 +68,7 @@ jobs:
       #   uses: crazy-max/ghaction-dump-context@v2
 
       - name: Cache cargo build
-        if: ${{ inputs.active_branch != 'main' && inputs.active_branch != 'beta' }}
+        if: ${{ inputs.deploy_contur == 'alpha' }}
         uses: actions/cache@v3
         with:
           path: |
@@ -100,7 +100,6 @@ jobs:
     if: ${{ inputs.language == 'csharp' && github.event_name != 'release' && github.event.action != 'published' && inputs.build_version == '' }}
     runs-on: ${{ inputs.image }}
     name: "[C#] Test code"
-
     steps:
       - uses: actions/checkout@v3  
 
@@ -131,8 +130,7 @@ jobs:
         run: |
           COMMIT_MESSAGE=$(git log -1 --pretty=%B)
           echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
-          echo "-------- COMMIT_MESSAGE: $COMMIT_MESSAGE"
-          
+
       - name: Send error notification
         run: |
           user="Triggered by: ${{ github.actor }}"
@@ -159,14 +157,12 @@ jobs:
           else
             echo "No jobs failed."
           fi
+          
 #-------------- BUILD RUST ----------------#
   build-rust:
     if: ${{ (inputs.language == 'rust' && github.event_name == 'release' && github.event.action == 'published') || (inputs.language == 'rust' && inputs.build_version != '') }}
     runs-on: ${{ inputs.image }}
     name: "[RUST] Build code"
-    # outputs:
-    #   success: ${{ steps.set-success.outputs.success }}
-    #   rust-build-status: ${{ job.status }}
     steps:
       - uses: actions/checkout@v4
 
@@ -183,25 +179,16 @@ jobs:
           fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Using version: $VERSION"
-
-      # - name: Get last commit message
-      #   id: get_commit
-      #   run: |
-      #     COMMIT_MESSAGE=$(git log -1 --pretty=%B)
-      #     echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
-      #     echo "Last commit: $COMMIT_MESSAGE"
         
       - name: Cache cargo build
-        if: ${{ inputs.active_branch != 'main' && inputs.active_branch != 'beta' }}
+        if: ${{ inputs.deploy_contur == 'alpha' }}
         uses: actions/cache@v3
         with:
           path: |
             target
             .cargo
-          # key: ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}-${{ hashFiles('**/Cargo.toml') }}
           key: ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}
           restore-keys: |
-            # ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}-
             ${{ runner.os }}-cargo-build-
 
       - name: Set up Rust toolchain
@@ -236,27 +223,14 @@ jobs:
           registry: docker.io
           repository: ${{ inputs.image_name }}
           tags: ${{ env.VERSION }}
-
-      # - name: Set success output
-      #   id: set-success
-      #   run: echo "::set-output name=success::true"
           
   #-------------- BUILD C# ----------------#
   build-csharp:
     if: ${{ (inputs.language == 'csharp' && github.event_name == 'release' && github.event.action == 'published') || (inputs.language == 'csharp' && inputs.build_version != '') }}
     runs-on: ${{ inputs.image }}
     name: "[C#] Build code"
-    # outputs:
-    #   success: ${{ steps.set-success.outputs.success }}
-    #   csharp-build-status: ${{ job.status }}
     steps:
       - uses: actions/checkout@v4
-
-      # - name: Get release version
-      #   id: get_version
-      #   run: |
-      #     echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_ENV
-      #     echo "VERSION-RC=$(echo ${{ inputs.release_version }} | sed 's/-.*//')"  >> $GITHUB_ENV
 
       - name: Get release version
         id: get_version
@@ -310,10 +284,6 @@ jobs:
           repository: ${{ inputs.image_name }}
           tags: ${{ env.VERSION }}
 
-      # - name: Set success output
-      #   id: set-success
-      #   run: echo "::set-output name=success::true"
-
   #-------------- DEPLOY TO SERVER ----------------#
   deploy-on-server:
     needs: [ build-csharp, build-rust ]
@@ -341,23 +311,19 @@ jobs:
           echo "Using version: $VERSION"
 
       - name: Deploy to ALPHA
-        if: ${{ inputs.active_branch != 'main' && inputs.active_branch != 'beta' }}
+        if: ${{ inputs.deploy_contur == 'alpha' }}
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF'
             echo "------------ Starting deployment... ------------"
             cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
-            pwd
-            ls -la
             git pull
             # reg=s"|/${{ inputs.repository_name }}:[0-9].*|/${{ inputs.repository_name }}:${{ inputs.build_version }}|g"
             reg=s"|/${{ inputs.repository_name }}:[0-9].*|/${{ inputs.repository_name }}:${{ env.VERSION }}|g"
             echo $reg
-            cat docker-compose.yaml
             echo "---------------------------------------"
             find . -type f -name "*.*ml" -exec sed -i -r $reg {} \;
             cat docker-compose.yaml
             docker-compose up -d
-            git status
             if git status | grep -q modified; then
               # git commit -a -m "Update ${{ inputs.repository_name }}:${{ inputs.build_version }}"
               git commit -a -m "Update ${{ inputs.repository_name }}:${{ env.VERSION }}"
@@ -366,6 +332,37 @@ jobs:
             echo "------------ Finished deployment ! ------------"
           EOF
 
+      - name: Deploy to BETA
+        if: ${{ inputs.deploy_contur == 'beta' }}
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_BETA_01 }} << 'EOF'
+            echo "------------ Starting deployment... ------------"
+            cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
+            # reg=s"|/${{ inputs.repository_name }}:[0-9].*|/${{ inputs.repository_name }}:${{ inputs.build_version }}|g"
+            reg=s"|/${{ inputs.repository_name }}:[0-9].*|/${{ inputs.repository_name }}:${{ env.VERSION }}|g"
+            echo $reg
+            echo "---------------------------------------"
+            find . -type f -name "*.*ml" -exec sed -i -r $reg {} \;
+            cat docker-compose.yaml
+            docker-compose up -d
+            echo "------------ Finished deployment ! ------------"
+          EOF
+
+      - name: Deploy to DEMO
+        if: ${{ inputs.deploy_contur == 'demo' }}
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_DEMO_01 }} << 'EOF'
+            echo "------------ Starting deployment... ------------"
+            cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
+            # reg=s"|/${{ inputs.repository_name }}:[0-9].*|/${{ inputs.repository_name }}:${{ inputs.build_version }}|g"
+            reg=s"|/${{ inputs.repository_name }}:[0-9].*|/${{ inputs.repository_name }}:${{ env.VERSION }}|g"
+            echo $reg
+            echo "---------------------------------------"
+            find . -type f -name "*.*ml" -exec sed -i -r $reg {} \;
+            cat docker-compose.yaml
+            docker-compose up -d
+            echo "------------ Finished deployment ! ------------"
+          EOF
       # - name: Send Telegram Notification
       #   env:
       #     TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}
