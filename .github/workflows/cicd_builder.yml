@@ -306,10 +306,8 @@ jobs:
 
   #-------------- DEPLOY TO SERVER ----------------#
   deploy-on-server:
-    needs: 
-    - build-csharp
-    - build-rust
-    # needs: [ build-csharp, build-rust ]
+    if: ${{ always() }}
+    needs: [ build-csharp, build-rust ]
     # needs: [ build-csharp]
     # if: job.build-csharp.outputs.success == 'true' || job.build-rust.outputs.success == 'true'
     # if: ${{ (success() && github.job == build-csharp) || (success() && github.job == build-rust) }}
@@ -318,7 +316,7 @@ jobs:
     # if: needs.build-csharp.outputs.success == 'true' || needs.build-rust.outputs.success == 'true'
     runs-on: ${{ inputs.image }}
     name: "Deploy on server"
-    if: success()
+    # if: success()
     steps:
       - name: Configure SSH
         uses: webfactory/ssh-agent@v0.5.3
