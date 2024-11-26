@@ -286,7 +286,7 @@ jobs:
   #-------------- DEPLOY TO SERVER ----------------#
   deploy-on-server:
     needs: [ build-csharp, build-rust ]
-    if: ${{ always() && contains(needs.*.result, 'success') && !(contains(needs.*.result, 'failure')) }}
+    if: ${{ always() && contains(needs.*.result, 'success') && !(contains(needs.*.result, 'skipped')) }}
     runs-on: ${{ inputs.image }}
     name: "Deploy on server"
     steps:
