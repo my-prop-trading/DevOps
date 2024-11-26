@@ -317,7 +317,17 @@ jobs:
         uses: webfactory/ssh-agent@v0.5.3
         with:
           ssh-private-key: ${{ secrets.SSH_KEY_FOR_DEPLOY }}
-      
+
+      - name: Get release version
+        id: get_version
+        run: |
+          if [ -z "${{ inputs.build_version }}" ]; then
+            VERSION="${{ inputs.release_version }}"
+          else
+            VERSION="${{ inputs.build_version }}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Using version: $VERSION"
 
       - name: Deploy to ALPHA
         if: ${{ inputs.active_branch != 'main' && inputs.active_branch != 'beta' }}
