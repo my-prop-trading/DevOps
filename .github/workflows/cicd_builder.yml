@@ -318,7 +318,7 @@ jobs:
     # if: needs.build-csharp.outputs.success == 'true' || needs.build-rust.outputs.success == 'true'
     runs-on: ${{ inputs.image }}
     name: "Deploy on server"
-    # if: success()
+    if: success()
     steps:
       - name: Configure SSH
         uses: webfactory/ssh-agent@v0.5.3
