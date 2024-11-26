@@ -138,7 +138,6 @@ jobs:
           reason="Last commit: ${{ env.COMMIT_MESSAGE }}"
           date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
           pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          echo 
         
           needs_json='${{ toJSON(needs) }}'
           failed_jobs=()
