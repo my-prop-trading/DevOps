@@ -309,7 +309,7 @@ jobs:
   #-------------- DEPLOY TO SERVER ----------------#
   deploy-on-server:
     # needs: [ build-csharp, build-rust ]
-    if: build-csharp.outputs.success == 'true' || build-rust.outputs.success == 'true'
+    if: job.build-csharp.outputs.success == 'true' || job.build-rust.outputs.success == 'true'
     # if: ${{ (github.event_name == 'release' && github.event.action == 'published') || (inputs.build_version != '') }}
     # needs: [ build-csharp, build-rust ]
     # if: needs.build-csharp.outputs.success == 'true' || needs.build-rust.outputs.success == 'true'
