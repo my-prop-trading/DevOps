@@ -68,7 +68,7 @@ jobs:
       #   uses: crazy-max/ghaction-dump-context@v2
 
       - name: Cache cargo build
-        if: ${{ inputs.deploy_contur == 'alpha' }}
+        if: ${{ inputs.deploy_contur != 'beta' && inputs.deploy_contur != 'demo' }}
         uses: actions/cache@v3
         with:
           path: |
@@ -181,7 +181,7 @@ jobs:
           echo "Using version: $VERSION"
         
       - name: Cache cargo build
-        if: ${{ inputs.deploy_contur == 'alpha' }}
+        if: ${{ inputs.deploy_contur != 'beta' && inputs.deploy_contur != 'demo' }}
         uses: actions/cache@v3
         with:
           path: |
@@ -311,7 +311,7 @@ jobs:
           echo "Using version: $VERSION"
 
       - name: Deploy to ALPHA
-        if: ${{ inputs.deploy_contur == 'alpha' }}
+        if: ${{ inputs.deploy_contur != 'beta' && inputs.deploy_contur != 'demo' }}
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF'
             echo "------------ Starting deployment... ------------"
