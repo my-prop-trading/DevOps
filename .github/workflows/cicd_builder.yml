@@ -308,11 +308,11 @@ jobs:
   deploy-on-server:
     # needs: [ build-csharp, build-rust ]
     needs: [ build-csharp]
-    if: job.build-csharp.outputs.success == 'true' || job.build-rust.outputs.success == 'true'
+    # if: job.build-csharp.outputs.success == 'true' || job.build-rust.outputs.success == 'true'
     
     # if: ${{ (github.event_name == 'release' && github.event.action == 'published') || (inputs.build_version != '') }}
     # needs: [ build-csharp, build-rust ]
-    # if: needs.build-csharp.outputs.success == 'true' || needs.build-rust.outputs.success == 'true'
+    if: needs.build-csharp.outputs.success == 'true' || needs.build-rust.outputs.success == 'true'
     runs-on: ${{ inputs.image }}
     name: "Deploy on server"
     # if: success()
@@ -322,11 +322,8 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_KEY_FOR_DEPLOY }}
           
-      - name: Get release version
-        id: get_version2
-        run: |
-          echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_ENV
-          echo "VERSION-RC=$(echo ${{ inputs.release_version }} | sed 's/-.*//')"  >> $GITHUB_ENV
+      - name: Check dump all context
+        uses: crazy-max/ghaction-dump-context@v2
 
       - name: Get release version
         id: get_version
