@@ -84,9 +84,10 @@ jobs:
           path: |
             target
             .cargo
-          key: ${{ runner.os }}-cargo-test-${{ inputs.repository_name }}-${{ hashFiles('**/Cargo.toml') }}
+          # key: ${{ runner.os }}-cargo-test-${{ inputs.repository_name }}-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-cargo-test-${{ inputs.repository_name }}
           restore-keys: |
-            ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}-
+            # ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}-
             ${{ runner.os }}-cargo-test-
 
       - name: Setup Rust
@@ -310,13 +311,6 @@ jobs:
     if: ${{ always() && contains(needs.*.result, 'success') && !(contains(needs.*.result, 'failure')) }}
     runs-on: ${{ inputs.image }}
     name: "Deploy on server"
-    # needs: [ build-csharp]
-    # if: job.build-csharp.outputs.success == 'true' || job.build-rust.outputs.success == 'true'
-    # if: ${{ (success() && github.job == build-csharp) || (success() && github.job == build-rust) }}
-    # if: ${{ (github.event_name == 'release' && github.event.action == 'published') || (inputs.build_version != '') }}
-    # needs: [ build-csharp, build-rust ]
-    # if: needs.build-csharp.outputs.success == 'true' || needs.build-rust.outputs.success == 'true'
-    # if: success()
     steps:
       - name: Configure SSH
         uses: webfactory/ssh-agent@v0.5.3
@@ -341,7 +335,7 @@ jobs:
         if: ${{ inputs.active_branch != 'main' && inputs.active_branch != 'beta' }}
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF'
-            echo "------ Starting deployment... ------"
+            echo "------------ Starting deployment... ------------"
             cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
             pwd
             ls -la
@@ -354,13 +348,13 @@ jobs:
             find . -type f -name "*.*ml" -exec sed -i -r $reg {} \;
             cat docker-compose.yaml
             docker-compose up -d
-            #sleep 10
             git status
             if git status | grep -q modified; then
               # git commit -a -m "Update ${{ inputs.repository_name }}:${{ inputs.build_version }}"
               git commit -a -m "Update ${{ inputs.repository_name }}:${{ env.VERSION }}"
               git push
             fi
+            echo "------------ Finished deployment ! ------------"
           EOF
 
       # - name: Send Telegram Notification
