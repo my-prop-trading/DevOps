@@ -146,26 +146,21 @@ jobs:
           reason="Last commit: ${{ github.event.head_commit.message }}"
           date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
           pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-         
-          # Создаем массив зафейлившихся джоб
+        
+          # Создаем массив для зафейлившихся джоб
           failed_jobs=()
           
-          # Получаем информацию о `needs` в виде JSON
-          needs_json='${{ toJSON(needs) }}'
-  
-          # Перебираем данные из `needs` для поиска зафейлившихся джоб
-          echo "$needs_json" | jq -r 'to_entries[] | select(.value.result == "failure") | .key' | while read -r job; do
+          # Используем jq для извлечения имен джоб с result == failure
+          while IFS= read -r job; do
             failed_jobs+=("$job")
-          done
-  
-          # Проверяем, если массив зафейлившихся джоб не пуст
+          done < <(echo "$needs_json" | jq -r 'to_entries[] | select(.value.result == "failure") | .key')
+          
+          # Проверяем, есть ли зафейлившиеся джобы
           if [[ ${#failed_jobs[@]} -gt 0 ]]; then
             job_names=$(IFS=, ; echo "${failed_jobs[*]}")
-            
+          
             echo "Failed job names: $job_names"
-            
-            # Записываем результат в GitHub Environment
-            echo "JJJ=$job_names" >> $GITHUB_ENV
+
             
             curl --request POST --header "Content-Type: application/json" \
               --data "{\"text\":\"[ERROR] GitHub CICD Info:\n\n >>>   $job_names\n\n  Project: ${{ inputs.repository_name }}\n $user\n $reason\n $date\n\n Please check action here:\n\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
