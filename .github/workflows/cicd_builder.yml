@@ -306,7 +306,7 @@ jobs:
 
   #-------------- DEPLOY TO SERVER ----------------#
   deploy-on-server:
-    if: ${{ always() }}
+    if: ${{ success() }}
     needs: [ build-csharp, build-rust ]
     # needs: [ build-csharp]
     # if: job.build-csharp.outputs.success == 'true' || job.build-rust.outputs.success == 'true'
@@ -323,8 +323,8 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_KEY_FOR_DEPLOY }}
           
-      - name: Check dump all context
-        uses: crazy-max/ghaction-dump-context@v2
+      # - name: Check dump all context
+      #   uses: crazy-max/ghaction-dump-context@v2
 
       - name: Get release version
         id: get_version
