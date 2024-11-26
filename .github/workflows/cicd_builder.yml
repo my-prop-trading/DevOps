@@ -306,9 +306,9 @@ jobs:
   deploy-on-server:
     # needs: [ build-csharp, build-rust ]
     # if: needs.build-csharp.outputs.success == 'true' || needs.build-rust.outputs.success == 'true'
-    # if: ${{ (github.event_name == 'release' && github.event.action == 'published') || (inputs.build_version != '') }}
-    needs: [ build-csharp, build-rust ]
-    if: needs.build-csharp.outputs.success == 'true' || needs.build-rust.outputs.success == 'true'
+    if: ${{ (github.event_name == 'release' && github.event.action == 'published') || (inputs.build_version != '') }}
+    # needs: [ build-csharp, build-rust ]
+    # if: needs.build-csharp.outputs.success == 'true' || needs.build-rust.outputs.success == 'true'
     runs-on: ${{ inputs.image }}
     name: "Deploy on server"
     # if: success()
