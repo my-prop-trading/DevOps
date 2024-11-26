@@ -116,7 +116,7 @@ jobs:
           dotnet build
           dotnet test
 
-#-------------- Send ERROR test notification ----------------#
+#-------------- Send ERROR notification ----------------#
   notify-telegram-error:
     needs: [test-rust, test-csharp, build-rust, build-csharp, deploy-on-server]
     runs-on: ${{ inputs.image }}
