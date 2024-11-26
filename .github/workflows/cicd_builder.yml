@@ -158,7 +158,10 @@ jobs:
           if [[ ${#failed_jobs[@]} -gt 0 ]]; then
           job_names=$(IFS=, ; echo "${failed_jobs[*]}")
 
-          echo $job_names
+          echo "Failed job names: $job_names"
+
+          echo "JJJ=$job_names" >> $GITHUB_ENV
+          echo "job_names: $JJJ"
           
           curl --request POST --header "Content-Type: application/json" \
             --data "{\"text\":\"[ERROR] GitHub CICD Info:\n\n >>>   $job_names\n\n  Project: ${{ inputs.repository_name }}\n $user\n $reason\n $date\n\n Please check action here:\n\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
