@@ -157,8 +157,7 @@ jobs:
     name: "[RUST] Build code"
     outputs:
       success: ${{ steps.set-success.outputs.success }}
-    # outputs:
-    #   rust-build-status: ${{ job.status }}
+      rust-build-status: ${{ job.status }}
     steps:
       - uses: actions/checkout@v4
 
@@ -239,8 +238,7 @@ jobs:
     name: "[C#] Build code"
     outputs:
       success: ${{ steps.set-success.outputs.success }}
-    # outputs:
-    #   csharp-build-status: ${{ job.status }}
+      csharp-build-status: ${{ job.status }}
     steps:
       - uses: actions/checkout@v4
 
@@ -309,7 +307,9 @@ jobs:
   #-------------- DEPLOY TO SERVER ----------------#
   deploy-on-server:
     # needs: [ build-csharp, build-rust ]
+    needs: [ build-csharp]
     if: job.build-csharp.outputs.success == 'true' || job.build-rust.outputs.success == 'true'
+    
     # if: ${{ (github.event_name == 'release' && github.event.action == 'published') || (inputs.build_version != '') }}
     # needs: [ build-csharp, build-rust ]
     # if: needs.build-csharp.outputs.success == 'true' || needs.build-rust.outputs.success == 'true'
@@ -321,6 +321,12 @@ jobs:
         uses: webfactory/ssh-agent@v0.5.3
         with:
           ssh-private-key: ${{ secrets.SSH_KEY_FOR_DEPLOY }}
+          
+      - name: Get release version
+        id: get_version2
+        run: |
+          echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_ENV
+          echo "VERSION-RC=$(echo ${{ inputs.release_version }} | sed 's/-.*//')"  >> $GITHUB_ENV
 
       - name: Get release version
         id: get_version
