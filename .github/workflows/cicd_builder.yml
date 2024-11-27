@@ -52,6 +52,8 @@ on:
         required: true
       SSH_ACCESS_BETA_01:
         required: true
+      SSH_ACCESS_BETA_04:
+        required: true
       SSH_ACCESS_DEMO_01:
         required: true
         
@@ -310,7 +312,7 @@ jobs:
           echo "Using version: $VERSION"
 
       - name: Deploy to ALPHA
-        if: ${{ inputs.deploy_contur != 'beta' && inputs.deploy_contur != 'demo' }}
+        if: ${{ inputs.deploy_contur != 'beta' && inputs.deploy_contur != 'demo' && inputs.service_type == 'server' }}
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF'
             echo "------------ Starting deployment... ------------"
@@ -331,8 +333,30 @@ jobs:
             echo "------------ Finished deployment ! ------------"
           EOF
 
+      - name: API Deploy to ALPHA
+        if: ${{ inputs.deploy_contur != 'beta' && inputs.deploy_contur != 'demo' && inputs.service_type == 'api' }}
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF'
+            echo "------------ Starting API deployment... ------------"
+            cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
+            git pull
+            # reg=s"|/${{ inputs.repository_name }}:[0-9].*|/${{ inputs.repository_name }}:${{ inputs.build_version }}|g"
+            reg=s"|/${{ inputs.repository_name }}:[0-9].*|/${{ inputs.repository_name }}:${{ env.VERSION }}|g"
+            echo $reg
+            echo "---------------------------------------"
+            find . -type f -name "*.*ml" -exec sed -i -r $reg {} \;
+            cat docker-compose.yaml
+            docker-compose up -d
+            if git status | grep -q modified; then
+              # git commit -a -m "Update ${{ inputs.repository_name }}:${{ inputs.build_version }}"
+              git commit -a -m "Update ${{ inputs.repository_name }}:${{ env.VERSION }}"
+              git push
+            fi
+            echo "------------ Finished API deployment ! ------------"
+          EOF
+
       - name: Deploy to BETA
-        if: ${{ inputs.deploy_contur == 'beta' }}
+        if: ${{ inputs.deploy_contur == 'beta' && inputs.service_type == 'server' }}
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_BETA_01 }} << 'EOF'
             echo "------------ Starting deployment... ------------"
@@ -347,8 +371,24 @@ jobs:
             echo "------------ Finished deployment ! ------------"
           EOF
 
+      - name: API Deploy to BETA
+        if: ${{ inputs.deploy_contur == 'beta' && inputs.service_type == 'api' }}
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_BETA_04 }} << 'EOF'
+            echo "------------ Starting API deployment... ------------"
+            cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
+            # reg=s"|/${{ inputs.repository_name }}:[0-9].*|/${{ inputs.repository_name }}:${{ inputs.build_version }}|g"
+            reg=s"|/${{ inputs.repository_name }}:[0-9].*|/${{ inputs.repository_name }}:${{ env.VERSION }}|g"
+            echo $reg
+            echo "---------------------------------------"
+            find . -type f -name "*.*ml" -exec sed -i -r $reg {} \;
+            cat docker-compose.yaml
+            docker-compose up -d
+            echo "------------ Finished API deployment ! ------------"
+          EOF
+
       - name: Deploy to DEMO
-        if: ${{ inputs.deploy_contur == 'demo' }}
+        if: ${{ inputs.deploy_contur == 'demo' && inputs.service_type == 'server' }}
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_DEMO_01 }} << 'EOF'
             echo "------------ Starting deployment... ------------"
@@ -361,6 +401,22 @@ jobs:
             cat docker-compose.yaml
             docker-compose up -d
             echo "------------ Finished deployment ! ------------"
+          EOF
+
+      - name: API Deploy to DEMO
+        if: ${{ inputs.deploy_contur == 'demo' && inputs.service_type == 'api' }}
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_DEMO_01 }} << 'EOF'
+            echo "------------ Starting API deployment... ------------"
+            cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
+            # reg=s"|/${{ inputs.repository_name }}:[0-9].*|/${{ inputs.repository_name }}:${{ inputs.build_version }}|g"
+            reg=s"|/${{ inputs.repository_name }}:[0-9].*|/${{ inputs.repository_name }}:${{ env.VERSION }}|g"
+            echo $reg
+            echo "---------------------------------------"
+            find . -type f -name "*.*ml" -exec sed -i -r $reg {} \;
+            cat docker-compose.yaml
+            docker-compose up -d
+            echo "------------ Finished API deployment ! ------------"
           EOF
       # - name: Send Telegram Notification
       #   env:
