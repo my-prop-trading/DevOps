@@ -439,7 +439,7 @@ jobs:
     needs: [deploy-on-server]
     runs-on: ${{ inputs.image }}
     name: "Send SUCCESS notification"
-    if: success()
+    # if: success()
     steps:
       - uses: actions/checkout@v3  
   
