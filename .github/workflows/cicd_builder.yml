@@ -308,6 +308,17 @@ jobs:
       # - name: Check dump all context
       #   uses: crazy-max/ghaction-dump-context@v2
 
+      - name: Get current version
+        id: current_version
+        run: |
+          CURRENT_VERSION=$(ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF'
+            cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
+            grep -Po "(?<=${{ inputs.repository_name }}:)[0-9]+\.[0-9]+\.[0-9]+" *.*ml || echo "unknown"
+          EOF
+          )
+          echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
+          echo "Current version: $CURRENT_VERSION"
+
       - name: Get release version
         id: get_version
         run: |
@@ -327,9 +338,6 @@ jobs:
             echo "------------ Starting deployment... ------------"
             cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
             git pull
-            CURRENT_VERSION=$(grep -Po "(?<=test-rs:)[0-9].*" *.*ml || echo "unknown")
-            echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
-            echo "Current version: $CURRENT_VERSION"
             reg=s"|/${{ inputs.repository_name }}:[0-9].*|/${{ inputs.repository_name }}:${{ env.VERSION }}|g"
             echo $reg
             echo "---------------------------------------"
@@ -352,9 +360,6 @@ jobs:
             echo "------------ Starting API deployment... ------------"
             cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
             git pull
-            CURRENT_VERSION=$(grep -Po "(?<=test-rs:)[0-9].*" *.*ml || echo "unknown")
-            echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
-            echo "Current version: $CURRENT_VERSION"
             reg=s"|/${{ inputs.repository_name }}:[0-9].*|/${{ inputs.repository_name }}:${{ env.VERSION }}|g"
             echo $reg
             echo "---------------------------------------"
