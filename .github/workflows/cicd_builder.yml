@@ -321,6 +321,7 @@ jobs:
       - name: Deploy to ALPHA
         if: ${{ inputs.deploy_contur != 'beta' && inputs.deploy_contur != 'demo' && inputs.service_type == 'server' }}
         run: |
+          echo "DEPLOY_ENV=ALPHA" >> $GITHUB_ENV
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF'
             echo "------------ Starting deployment... ------------"
             cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
@@ -343,6 +344,7 @@ jobs:
       - name: API Deploy to ALPHA
         if: ${{ inputs.deploy_contur != 'beta' && inputs.deploy_contur != 'demo' && inputs.service_type == 'api' }}
         run: |
+          echo "DEPLOY_ENV=ALPHA" >> $GITHUB_ENV
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF'
             echo "------------ Starting API deployment... ------------"
             cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
@@ -365,6 +367,7 @@ jobs:
       - name: Deploy to BETA
         if: ${{ inputs.deploy_contur == 'beta' && inputs.service_type == 'server' }}
         run: |
+          echo "DEPLOY_ENV=BETA" >> $GITHUB_ENV
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_BETA_01 }} << 'EOF'
             echo "------------ Starting deployment... ------------"
             cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
@@ -381,6 +384,7 @@ jobs:
       - name: API Deploy to BETA
         if: ${{ inputs.deploy_contur == 'beta' && inputs.service_type == 'api' }}
         run: |
+          echo "DEPLOY_ENV=BETA" >> $GITHUB_ENV
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_BETA_04 }} << 'EOF'
             echo "------------ Starting API deployment... ------------"
             cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
@@ -397,6 +401,7 @@ jobs:
       - name: Deploy to DEMO
         if: ${{ inputs.deploy_contur == 'demo' && inputs.service_type == 'server' }}
         run: |
+          echo "DEPLOY_ENV=DEMO" >> $GITHUB_ENV
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_DEMO_01 }} << 'EOF'
             echo "------------ Starting deployment... ------------"
             cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
@@ -413,6 +418,7 @@ jobs:
       - name: API Deploy to DEMO
         if: ${{ inputs.deploy_contur == 'demo' && inputs.service_type == 'api' }}
         run: |
+          echo "DEPLOY_ENV=DEMO" >> $GITHUB_ENV
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_DEMO_01 }} << 'EOF'
             echo "------------ Starting API deployment... ------------"
             cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
@@ -459,7 +465,7 @@ jobs:
           pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
   
           curl --request POST --header "Content-Type: application/json" \
-            --data "{\"text\":\"[SUCCESS] GitHub Deploy Info:\n\n Service: ${{ inputs.repository_name }}\n $version_info\n $user\n $reason\n $date\n\n Action URL:\n\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+            --data "{\"text\":\"[${{ env.DEPLOY_ENV }}] GitHub Deploy Info:\n\n Service: ${{ inputs.repository_name }}\n $version_info\n $user\n $reason\n $date\n\n Action URL:\n\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
 
   
