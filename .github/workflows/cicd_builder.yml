@@ -441,20 +441,20 @@ jobs:
       #     -d chat_id=$TELEGRAM_CHAT_ID \
       #     -d text="Deployment successful for ${{ inputs.repository_name }}:${{ inputs.build_version }}"
 
-  notify-telegram-success:
-    needs: [deploy-on-server]
-    runs-on: ${{ inputs.image }}
-    name: "Send SUCCESS notification"
-    # if: success()
-    if: ${{ always() && contains(needs.*.result, 'success') && !(contains(needs.*.result, 'failure')) }}
-    steps:
-      - uses: actions/checkout@v3  
+  # notify-telegram-success:
+  #   needs: [deploy-on-server]
+  #   runs-on: ${{ inputs.image }}
+  #   name: "Send SUCCESS notification"
+  #   # if: success()
+  #   if: ${{ always() && contains(needs.*.result, 'success') && !(contains(needs.*.result, 'failure')) }}
+  #   steps:
+  #     - uses: actions/checkout@v3  
   
-      - name: Get last commit message
-        id: get_commit
-        run: |
-          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
-          echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
+  #     - name: Get last commit message
+  #       id: get_commit
+  #       run: |
+  #         COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+  #         echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
   
       - name: Send success notification
         run: |
