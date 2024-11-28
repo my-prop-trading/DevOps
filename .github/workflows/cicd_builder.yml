@@ -117,47 +117,6 @@ jobs:
         run: |
           dotnet build
           dotnet test
-
-#-------------- Send ERROR notification ----------------#
-  notify-telegram-error:
-    needs: [test-rust, test-csharp, build-rust, build-csharp, deploy-on-server]
-    runs-on: ${{ inputs.image }}
-    name: "Send ERROR notification"
-    if: failure()
-    steps:
-      - uses: actions/checkout@v3  
-      
-      - name: Get last commit message
-        id: get_commit
-        run: |
-          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
-          echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
-
-      - name: Send error notification
-        run: |
-          user="Triggered by: ${{ github.actor }}"
-          # reason="Last commit: ${{ github.event.head_commit.message }}"
-          reason="Last commit: ${{ env.COMMIT_MESSAGE }}"
-          date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
-          pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-        
-          needs_json='${{ toJSON(needs) }}'
-          failed_jobs=()
-          
-          while IFS= read -r job; do
-            failed_jobs+=("$job")
-          done < <(echo "$needs_json" | jq -r 'to_entries[] | select(.value.result == "failure") | .key')
-          
-          if [[ ${#failed_jobs[@]} -gt 0 ]]; then
-            job_names=$(IFS=, ; echo "${failed_jobs[*]}")
-            echo "Failed job names: $job_names"
-    
-            curl --request POST --header "Content-Type: application/json" \
-              --data "{\"text\":\"[ERROR] GitHub Action Info:\n\n Failed >>>  $job_names\n Project: ${{ inputs.repository_name }}\n\n $user\n $reason\n $date\n\n Please check action here:\n\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
-              "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
-          else
-            echo "No jobs failed."
-          fi
           
 #-------------- BUILD RUST ----------------#
   build-rust:
@@ -483,7 +442,48 @@ jobs:
           pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
   
           curl --request POST --header "Content-Type: application/json" \
-            --data "{\"text\":\"[${{ env.DEPLOY_ENV }}] GitHub Deploy Info:\n\n Service: ${{ inputs.repository_name }}\n $version_info\n\n $user\n $reason\n $date\n\n Action URL:\n\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+            --data "{\"text\":\"[${{ env.DEPLOY_ENV }}] GitHub Deploy Info:\n\n Service: ${{ inputs.repository_name }}\n $version_info\n\n $user\n $reason\n $date\n\n Action URL:\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
 
-  
+#-------------- Send ERROR notification ----------------#
+  notify-telegram-error:
+    needs: [test-rust, test-csharp, build-rust, build-csharp, deploy-on-server]
+    runs-on: ${{ inputs.image }}
+    name: "Send ERROR notification"
+    if: failure()
+    steps:
+      - uses: actions/checkout@v3  
+      
+      - name: Get last commit message
+        id: get_commit
+        run: |
+          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+          echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
+
+      - name: Send error notification
+        run: |
+          user="Triggered by: ${{ github.actor }}"
+          # reason="Last commit: ${{ github.event.head_commit.message }}"
+          reason="Last commit: ${{ env.COMMIT_MESSAGE }}"
+          date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
+          pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        
+          needs_json='${{ toJSON(needs) }}'
+          failed_jobs=()
+          
+          while IFS= read -r job; do
+            failed_jobs+=("$job")
+          done < <(echo "$needs_json" | jq -r 'to_entries[] | select(.value.result == "failure") | .key')
+          
+          if [[ ${#failed_jobs[@]} -gt 0 ]]; then
+            job_names=$(IFS=, ; echo "${failed_jobs[*]}")
+            echo "Failed job names: $job_names"
+    
+            curl --request POST --header "Content-Type: application/json" \
+              --data "{\"text\":\"[ERROR] GitHub Action Info:\n\n Failed >>>   $job_names\n Project: ${{ inputs.repository_name }}\n\n $user\n $reason\n $date\n\n Please check action here:\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+              "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
+          else
+            echo "No jobs failed."
+          fi
+
+ #--------------------------------------------------------------------------------------------------#         
