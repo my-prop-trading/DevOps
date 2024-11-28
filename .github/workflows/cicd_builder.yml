@@ -124,7 +124,7 @@ jobs:
     runs-on: ${{ inputs.image }}
     name: "[RUST] Build code"
     steps:
-      # - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       # - name: Check dump all context
       #   uses: crazy-max/ghaction-dump-context@v2
@@ -270,13 +270,26 @@ jobs:
       - name: Get current version
         id: current_version
         run: |
-          CURRENT_VERSION=$(ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF'
+          # CURRENT_VERSION=$(ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF'
+          #   cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
+          #   grep -Po "(?<=${{ inputs.repository_name }}:)[0-9]+\.[0-9]+\.[0-9]+" *.*ml || echo "unknown"
+          # EOF
+          # )
+          # echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
+          # echo "Current version: $CURRENT_VERSION"
+          
+          CURRENT_VERSION=$(ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF' | grep -Po "(?<=${{ inputs.repository_name }}:)[0-9]+\.[0-9]+\.[0-9]+"
             cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
             grep -Po "(?<=${{ inputs.repository_name }}:)[0-9]+\.[0-9]+\.[0-9]+" *.*ml || echo "unknown"
           EOF
           )
+          if [[ "$CURRENT_VERSION" == "unknown" ]]; then
+            echo "Error: Unable to extract current version"
+            exit 1
+          fi
           echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
           echo "Current version: $CURRENT_VERSION"
+
 
       - name: Get release version
         id: get_version
