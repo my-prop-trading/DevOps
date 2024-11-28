@@ -411,36 +411,12 @@ jobs:
             docker-compose up -d
             echo "------------ Finished API deployment ! ------------"
           EOF
-      # - name: Send Telegram Notification
-      #   env:
-      #     TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}
-      #     TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}
-      #   run: |
-      #     curl -X POST \
-      #     https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage \
-      #     -d chat_id=$TELEGRAM_CHAT_ID \
-      #     -d text="Deployment successful for ${{ inputs.repository_name }}:${{ inputs.build_version }}"
-
-  # notify-telegram-success:
-  #   needs: [deploy-on-server]
-  #   runs-on: ${{ inputs.image }}
-  #   name: "Send SUCCESS notification"
-  #   # if: success()
-  #   if: ${{ always() && contains(needs.*.result, 'success') && !(contains(needs.*.result, 'failure')) }}
-  #   steps:
-  #     - uses: actions/checkout@v3  
-  
-  #     - name: Get last commit message
-  #       id: get_commit
-  #       run: |
-  #         COMMIT_MESSAGE=$(git log -1 --pretty=%B)
-  #         echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
   
       - name: Send deploy notification
         run: |
           user="Launched deploy by: ${{ github.actor }}"
           reason="Last commit: ${{ env.COMMIT_MESSAGE }}"
-          version_info="Updated version: ${{ env.CURRENT_VERSION }} ---> ${{ env.VERSION }}"
+          version_info="Version: ${{ env.CURRENT_VERSION }} ---> ${{ env.VERSION }}"
           date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
           pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
   
