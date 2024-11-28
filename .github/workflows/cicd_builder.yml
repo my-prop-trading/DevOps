@@ -440,6 +440,7 @@ jobs:
     runs-on: ${{ inputs.image }}
     name: "Send SUCCESS notification"
     # if: success()
+    if: ${{ always() && contains(needs.*.result, 'success') && !(contains(needs.*.result, 'failure')) }}
     steps:
       - uses: actions/checkout@v3  
   
