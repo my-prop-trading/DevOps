@@ -270,20 +270,13 @@ jobs:
       - name: Get current version
         id: current_version
         run: |
-          # CURRENT_VERSION=$(ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF'
-          #   cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
-          #   grep -Po "(?<=${{ inputs.repository_name }}:)[0-9]+\.[0-9]+\.[0-9]+" *.*ml || echo "unknown"
-          # EOF
-          # )
-          # echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
-          # echo "Current version: $CURRENT_VERSION"
-          
-          CURRENT_VERSION=$(ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF' | grep -Po "(?<=${{ inputs.repository_name }}:)[0-9]+\.[0-9]+\.[0-9]+"
+          CURRENT_VERSION=$(ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF'
             cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
-            grep -Po "(?<=${{ inputs.repository_name }}:)[0-9]+\.[0-9]+\.[0-9]+" *.*ml || echo "unknown"
+            VERSION_LINE=$(find . -type f -name "*.*ml" -exec cat {} + | awk -F ':' '/${{ inputs.repository_name }}/ {print $NF; exit}')
+            echo "$VERSION_LINE"
           EOF
-          )
-          if [[ "$CURRENT_VERSION" == "unknown" ]]; then
+              )
+          if [[ -z "$CURRENT_VERSION" ]]; then
             echo "Error: Unable to extract current version"
             exit 1
           fi
