@@ -165,7 +165,7 @@ jobs:
     runs-on: ${{ inputs.image }}
     name: "[RUST] Build code"
     steps:
-      # - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       # - name: Check dump all context
       #   uses: crazy-max/ghaction-dump-context@v2
