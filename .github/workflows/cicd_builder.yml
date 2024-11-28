@@ -267,20 +267,38 @@ jobs:
       # - name: Check dump all context
       #   uses: crazy-max/ghaction-dump-context@v2
 
-      - name: Get current version
-        id: current_version
+      # - name: Get current version
+      #   id: current_version
+      #   run: |
+      #     CURRENT_VERSION=$(ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF' | grep -Po "(?<=${{ inputs.repository_name }}:)[0-9]+\.[0-9]+\.[0-9]+"
+      #       cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
+      #       grep -Po "(?<=${{ inputs.repository_name }}:)[0-9]+\.[0-9]+\.[0-9]+" *.*ml || echo "unknown"
+      #     EOF
+      #     )
+      #     if [[ "$CURRENT_VERSION" == "unknown" ]]; then
+      #       echo "Error: Unable to extract current version"
+      #       exit 1
+      #     fi
+      #     echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
+      #     echo "Current version: $CURRENT_VERSION"
+
+      - name: Extract current version from server
+        id: extract_version
         run: |
-          CURRENT_VERSION=$(ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF' | grep -Po "(?<=${{ inputs.repository_name }}:)[0-9]+\.[0-9]+\.[0-9]+"
-            cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
-            grep -Po "(?<=${{ inputs.repository_name }}:)[0-9]+\.[0-9]+\.[0-9]+" *.*ml || echo "unknown"
+          CURRENT_VERSION=$(ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF'
+            cd ~/docker-infrastructure/microservices/test-rs || { echo "Directory not found"; exit 1; }
+            grep -Po "(?<=test-rs:)[0-9]+\.[0-9]+\.[0-9]+" *.*ml || echo "unknown"
           EOF
           )
-          if [[ "$CURRENT_VERSION" == "unknown" ]]; then
+
+          CURRENT_VERSION=$(echo "$CURRENT_VERSION" | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | tail -n 1)
+          
+          if [[ -z "$CURRENT_VERSION" ]]; then
             echo "Error: Unable to extract current version"
             exit 1
+          else
+            echo "Extracted version: $CURRENT_VERSION"
           fi
-          echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
-          echo "Current version: $CURRENT_VERSION"
 
 
       - name: Get release version
