@@ -270,13 +270,12 @@ jobs:
       - name: Get current version
         id: current_version
         run: |
-          CURRENT_VERSION=$(ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF'
+          CURRENT_VERSION=$(ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF' | grep -Po "(?<=${{ inputs.repository_name }}:)[0-9]+\.[0-9]+\.[0-9]+"
             cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
-            VERSION_LINE=$(find . -type f -name "*.*ml" -exec cat {} + | awk -F ':' '/${{ inputs.repository_name }}/ {print $NF; exit}')
-            echo "$VERSION_LINE"
+            grep -Po "(?<=${{ inputs.repository_name }}:)[0-9]+\.[0-9]+\.[0-9]+" *.*ml || echo "unknown"
           EOF
-              )
-          if [[ -z "$CURRENT_VERSION" ]]; then
+          )
+          if [[ "$CURRENT_VERSION" == "unknown" ]]; then
             echo "Error: Unable to extract current version"
             exit 1
           fi
