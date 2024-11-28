@@ -292,6 +292,12 @@ jobs:
     runs-on: ${{ inputs.image }}
     name: "Deploy on server"
     steps:
+      - name: Get last commit message
+        id: get_commit
+        run: |
+          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+          echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
+          
       - name: Configure SSH
         uses: webfactory/ssh-agent@v0.5.3
         with:
@@ -468,7 +474,7 @@ jobs:
   #         COMMIT_MESSAGE=$(git log -1 --pretty=%B)
   #         echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
   
-      - name: Send success notification
+      - name: Send deploy notification
         run: |
           user="Launched deploy by: ${{ github.actor }}"
           reason="Last commit: ${{ env.COMMIT_MESSAGE }}"
