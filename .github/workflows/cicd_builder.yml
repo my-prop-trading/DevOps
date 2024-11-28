@@ -299,6 +299,13 @@ jobs:
           
       # - name: Check dump all context
       #   uses: crazy-max/ghaction-dump-context@v2
+      
+      - name: Get current version
+        id: extract_version
+        run: |
+          CURRENT_VERSION=$(grep -Po "(?<=test-rs:)[0-9].*" *.*ml || echo "unknown")
+          echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
+          echo "Current version: $CURRENT_VERSION"
 
       - name: Get release version
         id: get_version
@@ -428,5 +435,30 @@ jobs:
       #     -d chat_id=$TELEGRAM_CHAT_ID \
       #     -d text="Deployment successful for ${{ inputs.repository_name }}:${{ inputs.build_version }}"
 
+  notify-telegram-success:
+    needs: [deploy-on-server]
+    runs-on: ${{ inputs.image }}
+    name: "Send SUCCESS notification"
+    if: success()
+    steps:
+      - uses: actions/checkout@v3  
+  
+      - name: Get last commit message
+        id: get_commit
+        run: |
+          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+          echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
+  
+      - name: Send success notification
+        run: |
+          user="Launched deploy by: ${{ github.actor }}"
+          reason="Last commit: ${{ env.COMMIT_MESSAGE }}"
+          version_info="Updated version: ${{ env.CURRENT_VERSION }} ----> ${{ env.VERSION }}"
+          date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
+          pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+  
+          curl --request POST --header "Content-Type: application/json" \
+            --data "{\"text\":\"[SUCCESS] GitHub Deploy Info:\n\n Service: ${{ inputs.repository_name }}\n $version_info\n $user\n $reason\n $date\n\n Action URL:\n\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+            "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
 
   
