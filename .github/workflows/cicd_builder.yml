@@ -419,9 +419,18 @@ jobs:
           version_info="Version: ${{ env.CURRENT_VERSION }} ---> ${{ env.VERSION }}"
           date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
           pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-  
+
+          IFS='.' read -r CURRENT_MAJOR CURRENT_MINOR CURRENT_PATCH <<< "${{ env.CURRENT_VERSION }}"
+          IFS='.' read -r NEW_MAJOR NEW_MINOR NEW_PATCH <<< "${{ env.VERSION }}"
+          
+          if [[ "$CURRENT_MAJOR" -ne "$NEW_MAJOR" || "$CURRENT_MINOR" -ne "$NEW_MINOR" ]]; then
+            extra_message="!!! Attention: Major version change detected! Please check settings or DataBase configuration !!!"
+          else
+            extra_message=""
+          fi
+
           curl --request POST --header "Content-Type: application/json" \
-            --data "{\"text\":\"[${{ env.DEPLOY_ENV }}] GitHub Deploy Info:\n\n Service: ${{ inputs.repository_name }}\n $version_info\n\n $user\n $reason\n $date\n\n Action URL:\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+            --data "{\"text\":\"[${{ env.DEPLOY_ENV }}] GitHub Deploy Info:\n\n Service: ${{ inputs.repository_name }}\n $version_info\n\n $extra_message\n\n $user\n $reason\n $date\n\n Action URL:\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
 
 #-------------- Send ERROR notification ----------------#
