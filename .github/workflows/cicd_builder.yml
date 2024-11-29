@@ -77,8 +77,11 @@ jobs:
           #   target
           #   .cargo
           path: |
-            ~/.cargo
-            ./target
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
           key: ${{ runner.os }}-cargo-test-${{ inputs.repository_name }}
           restore-keys: |
             ${{ runner.os }}-cargo-test-
