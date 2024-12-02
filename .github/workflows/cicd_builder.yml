@@ -287,7 +287,7 @@ jobs:
         id: current_version
         run: |
           CURRENT_VERSION=$(ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF'
-            cd ~/docker-infrastructure/microservices/test-rs || { echo "Directory not found"; exit 1; }
+            cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }} || { echo "Directory not found"; exit 1; }
             grep -Po "(?<=test-rs:)[0-9].*" *.*ml || echo "unknown"
           EOF
           )
