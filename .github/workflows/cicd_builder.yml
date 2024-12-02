@@ -200,7 +200,7 @@ jobs:
           
   #-------------- BUILD C# ----------------#
   build-csharp:
-    if: ${{ (inputs.language == 'csharp' && github.event_name == 'release' && github.event.action == 'published') || (inputs.language == 'csharp' && inputs.build_version != '') }}
+    if: ${{ (inputs.language == 'csharp' && github.event_name == 'release' && github.event.action == 'published') || (inputs.language == 'csharp' && inputs.build_version != '' && github.ref_name != 'main') }}
     runs-on: ${{ inputs.image }}
     name: "[C#] Build code"
     steps:
