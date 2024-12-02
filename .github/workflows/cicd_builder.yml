@@ -12,9 +12,9 @@ on:
       build_folder:
         required: false
         type: string
-      deploy_contur:
-        required: false
-        type: string
+      # deploy_contur:
+      #   required: false
+      #   type: string
       build_version:
         required: false
         type: string
@@ -70,7 +70,8 @@ jobs:
       #   uses: crazy-max/ghaction-dump-context@v2
 
       - name: Cache cargo build
-        if: ${{ inputs.deploy_contur != 'beta' && inputs.deploy_contur != 'demo' }}
+        # if: ${{ inputs.deploy_contur != 'beta' && inputs.deploy_contur != 'demo' }}
+        if: ${{ github.ref_name != 'beta' && github.ref_name != 'main' }}
         uses: actions/cache@v3
         with:
           # path: |
@@ -147,7 +148,8 @@ jobs:
           echo "Using version: $VERSION"
         
       - name: Cache cargo build
-        if: ${{ inputs.deploy_contur != 'beta' && inputs.deploy_contur != 'demo' }}
+        # if: ${{ inputs.deploy_contur != 'beta' && inputs.deploy_contur != 'demo' }}
+        if: ${{ github.ref_name != 'beta' && github.ref_name != 'main' }}
         uses: actions/cache@v3
         with:
           # path: |
@@ -308,7 +310,8 @@ jobs:
           echo "Using version: $VERSION"
 
       - name: Deploy to ALPHA
-        if: ${{ inputs.deploy_contur != 'beta' && inputs.deploy_contur != 'demo' && inputs.service_type == 'server' }}
+        # if: ${{ inputs.deploy_contur != 'beta' && inputs.deploy_contur != 'demo' && inputs.service_type == 'server' }}
+        if: ${{ inputs.service_type == 'server' && github.ref_name != 'beta' && github.ref_name != 'main' && inputs.build_version != '' && github.event_name != 'release' && github.event.action != 'published' }}
         run: |
           echo "DEPLOY_ENV=ALPHA" >> $GITHUB_ENV
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF'
@@ -330,7 +333,9 @@ jobs:
           EOF
 
       - name: API Deploy to ALPHA
-        if: ${{ inputs.deploy_contur != 'beta' && inputs.deploy_contur != 'demo' && inputs.service_type == 'api' }}
+        # if: ${{ inputs.deploy_contur != 'beta' && inputs.deploy_contur != 'demo' && inputs.service_type == 'api' }}
+        if: ${{ inputs.service_type == 'api' && github.ref_name != 'beta' && github.ref_name != 'main' && inputs.build_version != '' && github.event_name != 'release' && github.event.action != 'published' }}
+
         run: |
           echo "DEPLOY_ENV=ALPHA" >> $GITHUB_ENV
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF'
@@ -352,7 +357,9 @@ jobs:
           EOF
 
       - name: Deploy to BETA
-        if: ${{ inputs.deploy_contur == 'beta' && inputs.service_type == 'server' }}
+        # if: ${{ inputs.deploy_contur == 'beta' && inputs.service_type == 'server' }}
+        if: ${{ inputs.service_type == 'server' && github.ref_name == 'beta' && inputs.build_version != '' && github.event_name != 'release' && github.event.action != 'published' }}
+
         run: |
           echo "DEPLOY_ENV=BETA" >> $GITHUB_ENV
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_BETA_01 }} << 'EOF'
@@ -368,7 +375,9 @@ jobs:
           EOF
 
       - name: API Deploy to BETA
-        if: ${{ inputs.deploy_contur == 'beta' && inputs.service_type == 'api' }}
+        # if: ${{ inputs.deploy_contur == 'beta' && inputs.service_type == 'api' }}
+        if: ${{ inputs.service_type == 'api' && github.ref_name == 'beta' && inputs.build_version != '' && github.event_name != 'release' && github.event.action != 'published' }}
+
         run: |
           echo "DEPLOY_ENV=BETA" >> $GITHUB_ENV
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_BETA_04 }} << 'EOF'
@@ -384,7 +393,8 @@ jobs:
           EOF
 
       - name: Deploy to DEMO
-        if: ${{ inputs.deploy_contur == 'demo' && inputs.service_type == 'server' }}
+        # if: ${{ inputs.deploy_contur == 'demo' && inputs.service_type == 'server' }}
+        if: ${{ inputs.service_type == 'server'  && inputs.build_version == '' && github.event_name == 'release' && github.event.action == 'published' }}
         run: |
           echo "DEPLOY_ENV=DEMO" >> $GITHUB_ENV
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_DEMO_01 }} << 'EOF'
@@ -400,7 +410,8 @@ jobs:
           EOF
 
       - name: API Deploy to DEMO
-        if: ${{ inputs.deploy_contur == 'demo' && inputs.service_type == 'api' }}
+        # if: ${{ inputs.deploy_contur == 'demo' && inputs.service_type == 'api' }}
+        if: ${{ inputs.service_type == 'api'  && inputs.build_version == '' && github.event_name == 'release' && github.event.action == 'published' }}
         run: |
           echo "DEPLOY_ENV=DEMO" >> $GITHUB_ENV
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_DEMO_01 }} << 'EOF'
