@@ -12,9 +12,6 @@ on:
       build_folder:
         required: false
         type: string
-      # deploy_contur:
-      #   required: false
-      #   type: string
       build_version:
         required: false
         type: string
@@ -70,7 +67,6 @@ jobs:
       #   uses: crazy-max/ghaction-dump-context@v2
 
       - name: Cache cargo build
-        # if: ${{ inputs.deploy_contur != 'beta' && inputs.deploy_contur != 'demo' }}
         if: ${{ github.ref_name != 'beta' && github.ref_name != 'main' }}
         uses: actions/cache@v3
         with:
@@ -148,7 +144,6 @@ jobs:
           echo "Using version: $VERSION"
         
       - name: Cache cargo build
-        # if: ${{ inputs.deploy_contur != 'beta' && inputs.deploy_contur != 'demo' }}
         if: ${{ github.ref_name != 'beta' && github.ref_name != 'main' }}
         uses: actions/cache@v3
         with:
@@ -283,23 +278,6 @@ jobs:
       # - name: Check dump all context
       #   uses: crazy-max/ghaction-dump-context@v2
 
-      # - name: Get current version
-      #   id: current_version
-      #   run: |
-      #     CURRENT_VERSION=$(ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF'
-      #       cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }} || { echo "Directory not found"; exit 1; }
-      #       grep -Po "(?<=${{ inputs.repository_name }}:)[0-9].*" *.*ml || echo "unknown"
-      #     EOF
-      #     )
-      #     CURRENT_VERSION=$(echo "$CURRENT_VERSION" | grep -Eo '[0-9].*' | tail -n 1)
-      #     if [[ -z "$CURRENT_VERSION" ]]; then
-      #       echo "Error: Unable to extract current version"
-      #       exit 1
-      #     else
-      #       echo "Extracted version: $CURRENT_VERSION"
-      #     fi
-      #     echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
-
       - name: Get release version
         id: get_version
         run: |
@@ -312,7 +290,6 @@ jobs:
           echo "Using version: $VERSION"
 
       - name: Deploy to ALPHA
-        # if: ${{ inputs.deploy_contur != 'beta' && inputs.deploy_contur != 'demo' && inputs.service_type == 'server' }}
         if: ${{ inputs.service_type == 'server' && github.ref_name != 'beta' && github.ref_name != 'main' && inputs.build_version != '' && github.event_name != 'release' && github.event.action != 'published' }}
         run: |
           echo "DEPLOY_ENV=ALPHA" >> $GITHUB_ENV
@@ -350,7 +327,6 @@ jobs:
           EOF
 
       - name: API Deploy to ALPHA
-        # if: ${{ inputs.deploy_contur != 'beta' && inputs.deploy_contur != 'demo' && inputs.service_type == 'api' }}
         if: ${{ inputs.service_type == 'api' && github.ref_name != 'beta' && github.ref_name != 'main' && inputs.build_version != '' && github.event_name != 'release' && github.event.action != 'published' }}
 
         run: |
@@ -389,7 +365,6 @@ jobs:
           EOF
 
       - name: Deploy to BETA
-        # if: ${{ inputs.deploy_contur == 'beta' && inputs.service_type == 'server' }}
         if: ${{ inputs.service_type == 'server' && github.ref_name == 'beta' && inputs.build_version != '' && github.event_name != 'release' && github.event.action != 'published' }}
 
         run: |
@@ -422,7 +397,6 @@ jobs:
           EOF
 
       - name: API Deploy to BETA
-        # if: ${{ inputs.deploy_contur == 'beta' && inputs.service_type == 'api' }}
         if: ${{ inputs.service_type == 'api' && github.ref_name == 'beta' && inputs.build_version != '' && github.event_name != 'release' && github.event.action != 'published' }}
 
         run: |
@@ -455,7 +429,6 @@ jobs:
           EOF
 
       - name: Deploy to DEMO
-        # if: ${{ inputs.deploy_contur == 'demo' && inputs.service_type == 'server' }}
         if: ${{ inputs.service_type == 'server'  && inputs.build_version == '' && github.event_name == 'release' && github.event.action == 'published' }}
         run: |
           echo "DEPLOY_ENV=DEMO" >> $GITHUB_ENV
@@ -487,7 +460,6 @@ jobs:
           EOF
 
       - name: API Deploy to DEMO
-        # if: ${{ inputs.deploy_contur == 'demo' && inputs.service_type == 'api' }}
         if: ${{ inputs.service_type == 'api'  && inputs.build_version == '' && github.event_name == 'release' && github.event.action == 'published' }}
         run: |
           echo "DEPLOY_ENV=DEMO" >> $GITHUB_ENV
