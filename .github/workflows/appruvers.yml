@@ -1,0 +1,16 @@
+name: Auto Assign Reviewers
+
+on:
+  pull_request:
+    types: [opened]
+    branches: [ "main", "beta" ]
+
+jobs:
+  assign_reviewers:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Request review from Aproovers
+        uses: peter-evans/request-review@v3
+        with:
+          # reviewers: aproover1, aproover2
+          team-reviewers: my-prop-trading/Aproovers
