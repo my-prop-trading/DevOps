@@ -255,7 +255,7 @@ jobs:
           repository: ${{ inputs.image_name }}
           tags: ${{ env.VERSION }}
 
-  #-------------- DEPLOY TO SERVER ----------------#
+  #-------------- DEPLOY TO ALPHA ----------------#
   deploy-on-alpha:
     needs: [ build-csharp, build-rust ]
     if: ${{ always() && contains(needs.*.result, 'success') && !(contains(needs.*.result, 'failure')) }}
@@ -387,6 +387,7 @@ jobs:
             --data "{\"text\":\"[${{ env.DEPLOY_ENV }}] GitHub Deploy Info:\n\n Service: ${{ inputs.repository_name }}\n $version_info\n\n $extra_message\n\n $user\n $reason\n $date\n\n Action URL:\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
 
+#-------------- DEPLOY TO SERVER ----------------#
   deploy-on-beta-or-demo:
     if: ${{ github.ref_name == 'beta' && inputs.build_version != '' && github.event_name != 'release' && github.event.action != 'published' || inputs.build_version == '' && github.event_name == 'release' && github.event.action == 'published' }}
     runs-on: ${{ inputs.image }}
