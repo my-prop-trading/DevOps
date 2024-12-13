@@ -260,7 +260,7 @@ jobs:
     needs: [ build-csharp, build-rust ]
     if: ${{ always() && contains(needs.*.result, 'success') && !(contains(needs.*.result, 'failure')) }}
     runs-on: ${{ inputs.image }}
-    name: "Deploy on Aplha"
+    name: "Deploy on Server"
     steps:
       - uses: actions/checkout@v3  
       
