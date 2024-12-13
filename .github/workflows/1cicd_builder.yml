@@ -57,7 +57,7 @@ on:
 jobs:         
 #-------------- TEST RUST ----------------#
   test-rust:
-    if: ${{ inputs.language == 'rust' && github.event_name != 'release' && github.event.action != 'published' && inputs.build_version == '' && github.ref_name != 'main' && github.ref_name != 'beta' }}
+    if: ${{ inputs.language == 'rust' && github.event_name != 'release' && github.event.action != 'published' && inputs.build_version == '' && github.ref_name != 'main' }}
     runs-on: ${{ inputs.image }}
     name: "[RUST] Test code"
     steps:
@@ -102,7 +102,7 @@ jobs:
 
 #-------------- TEST C# ----------------#
   test-csharp:
-    if: ${{ inputs.language == 'csharp' && github.event_name != 'release' && github.event.action != 'published' && inputs.build_version == '' && github.ref_name != 'main' && github.ref_name != 'beta' }}
+    if: ${{ inputs.language == 'csharp' && github.event_name != 'release' && github.event.action != 'published' && inputs.build_version == '' && github.ref_name != 'main' }}
     runs-on: ${{ inputs.image }}
     name: "[C#] Test code"
     steps:
@@ -124,7 +124,7 @@ jobs:
 #-------------- BUILD RUST ----------------#
   build-rust:
     # if: ${{ (inputs.language == 'rust' && github.event_name == 'release' && github.event.action == 'published') || (inputs.language == 'rust' && inputs.build_version != '' && github.ref_name != 'main') }}
-    if: ${{ inputs.language == 'rust' && github.event_name != 'release' && github.event.action != 'published' && inputs.build_version != '' && github.ref_name != 'main' && github.ref_name != 'beta' }}
+    if: ${{ inputs.language == 'rust' && github.event_name != 'release' && github.event.action != 'published' && inputs.build_version != '' && github.ref_name != 'main' }}
     runs-on: ${{ inputs.image }}
     name: "[RUST] Build code"
     steps:
@@ -197,7 +197,7 @@ jobs:
   #-------------- BUILD C# ----------------#
   build-csharp:
     # if: ${{ (inputs.language == 'csharp' && github.event_name == 'release' && github.event.action == 'published') || (inputs.language == 'csharp' && inputs.build_version != '' && github.ref_name != 'main') }}
-    if: ${{ inputs.language == 'csharp' && github.event_name != 'release' && github.event.action != 'published' && inputs.build_version != '' && github.ref_name != 'main' && github.ref_name != 'beta' }}
+    if: ${{ inputs.language == 'csharp' && github.event_name != 'release' && github.event.action != 'published' && inputs.build_version != '' && github.ref_name != 'main' }}
     runs-on: ${{ inputs.image }}
     name: "[C#] Build code"
     steps:
@@ -255,8 +255,8 @@ jobs:
           repository: ${{ inputs.image_name }}
           tags: ${{ env.VERSION }}
 
-  #-------------- DEPLOY TO ALPHA ----------------#
-  deploy-on-alpha:
+  #-------------- DEPLOY TO SERVER ----------------#
+  deploy-on-server:
     needs: [ build-csharp, build-rust ]
     if: ${{ always() && contains(needs.*.result, 'success') && !(contains(needs.*.result, 'failure')) }}
     runs-on: ${{ inputs.image }}
@@ -365,62 +365,7 @@ jobs:
             fi
             echo "------------ Finished API deployment ! ------------"
           EOF
-          
-      - name: Send deploy notification
-        run: |
-          user="Launched deploy by: ${{ github.actor }}"
-          reason="Last commit: ${{ env.COMMIT_MESSAGE }}"
-          version_info="Version: ${{ env.CURRENT_VERSION }} ---> ${{ env.VERSION }}"
-          date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
-          pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-          IFS='.' read -r CURRENT_MAJOR CURRENT_MINOR CURRENT_PATCH <<< "${{ env.CURRENT_VERSION }}"
-          IFS='.' read -r NEW_MAJOR NEW_MINOR NEW_PATCH <<< "${{ env.VERSION }}"
-          
-          if [[ "$CURRENT_MAJOR" -ne "$NEW_MAJOR" || "$CURRENT_MINOR" -ne "$NEW_MINOR" ]]; then
-            extra_message="!!! Attention: Major version change detected! Please check settings or DataBase configuration !!!"
-          else
-            extra_message=""
-          fi
-
-          curl --request POST --header "Content-Type: application/json" \
-            --data "{\"text\":\"[${{ env.DEPLOY_ENV }}] GitHub Deploy Info:\n\n Service: ${{ inputs.repository_name }}\n $version_info\n\n $extra_message\n\n $user\n $reason\n $date\n\n Action URL:\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
-            "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
-
-#-------------- DEPLOY TO SERVER ----------------#
-  deploy-on-beta-or-demo:
-    if: ${{ github.ref_name == 'beta' && inputs.build_version != '' && github.event_name != 'release' && github.event.action != 'published' || inputs.build_version == '' && github.event_name == 'release' && github.event.action == 'published' }}
-    runs-on: ${{ inputs.image }}
-    name: "Deploy on server"
-    steps:
-      - uses: actions/checkout@v3  
-      
-      - name: Get last commit message
-        id: get_commit
-        continue-on-error: true
-        run: |
-          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
-          echo $COMMIT_MESSAGE
-          echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
-          
-      - name: Configure SSH
-        uses: webfactory/ssh-agent@v0.5.3
-        with:
-          ssh-private-key: ${{ secrets.SSH_KEY_FOR_DEPLOY }}
-          
-      # - name: Check dump all context
-      #   uses: crazy-max/ghaction-dump-context@v2
-
-      - name: Get release version
-        id: get_version
-        run: |
-          if [ -z "${{ inputs.build_version }}" ]; then
-            VERSION="${{ inputs.release_version }}"
-          else
-            VERSION="${{ inputs.build_version }}"
-          fi
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Using version: $VERSION"
       - name: Deploy to BETA
         if: ${{ inputs.service_type == 'server' && github.ref_name == 'beta' && inputs.build_version != '' && github.event_name != 'release' && github.event.action != 'published' }}
 
@@ -484,6 +429,62 @@ jobs:
             docker-compose up -d
             echo "------------ Finished API deployment ! ------------"
           EOF
+          
+      - name: Send deploy notification
+        run: |
+          user="Launched deploy by: ${{ github.actor }}"
+          reason="Last commit: ${{ env.COMMIT_MESSAGE }}"
+          version_info="Version: ${{ env.CURRENT_VERSION }} ---> ${{ env.VERSION }}"
+          date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
+          pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          IFS='.' read -r CURRENT_MAJOR CURRENT_MINOR CURRENT_PATCH <<< "${{ env.CURRENT_VERSION }}"
+          IFS='.' read -r NEW_MAJOR NEW_MINOR NEW_PATCH <<< "${{ env.VERSION }}"
+          
+          if [[ "$CURRENT_MAJOR" -ne "$NEW_MAJOR" || "$CURRENT_MINOR" -ne "$NEW_MINOR" ]]; then
+            extra_message="!!! Attention: Major version change detected! Please check settings or DataBase configuration !!!"
+          else
+            extra_message=""
+          fi
+
+          curl --request POST --header "Content-Type: application/json" \
+            --data "{\"text\":\"[${{ env.DEPLOY_ENV }}] GitHub Deploy Info:\n\n Service: ${{ inputs.repository_name }}\n $version_info\n\n $extra_message\n\n $user\n $reason\n $date\n\n Action URL:\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+            "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
+
+#-------------- RELEASE DEPLOY ----------------#
+  deploy-on-demo:
+    if: ${{  inputs.build_version == '' && github.event_name == 'release' && github.event.action == 'published' }}
+    runs-on: ${{ inputs.image }}
+    name: "Deploy on DEMO"
+    steps:
+      - uses: actions/checkout@v3  
+      
+      - name: Get last commit message
+        id: get_commit
+        continue-on-error: true
+        run: |
+          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+          echo $COMMIT_MESSAGE
+          echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
+          
+      - name: Configure SSH
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.SSH_KEY_FOR_DEPLOY }}
+          
+      # - name: Check dump all context
+      #   uses: crazy-max/ghaction-dump-context@v2
+
+      - name: Get release version
+        id: get_version
+        run: |
+          if [ -z "${{ inputs.build_version }}" ]; then
+            VERSION="${{ inputs.release_version }}"
+          else
+            VERSION="${{ inputs.build_version }}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Using version: $VERSION"
 
       - name: Deploy to DEMO
         if: ${{ inputs.service_type == 'server'  && inputs.build_version == '' && github.event_name == 'release' && github.event.action == 'published' }}
@@ -570,7 +571,7 @@ jobs:
 
 #-------------- Send ERROR notification ----------------#
   notify-telegram-error:
-    needs: [test-rust, test-csharp, build-rust, build-csharp, deploy-on-alpha, deploy-on-beta-or-demo]
+    needs: [test-rust, test-csharp, build-rust, build-csharp, deploy-on-server, deploy-on-demo]
     runs-on: ${{ inputs.image }}
     name: "Send ERROR notification"
     if: failure()
