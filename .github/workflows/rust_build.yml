@@ -52,7 +52,6 @@ jobs:
         run: echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_OUTPUT
 
       - name: Cache cargo build
-        if: ${{ github.ref_name != 'beta' && github.ref_name != 'main' }}
         uses: actions/cache@v3
         with:
           # path: |
