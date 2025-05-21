@@ -63,10 +63,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          # key: ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}
-          # restore-keys: |
-          #   ${{ runner.os }}-cargo-build-
-          key: ${{ runner.os }}-cargo-build-${{ github.event_name == 'release' && github.event.release.target_commitish || github.ref_name }}
+          key: ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}
           restore-keys: |
             ${{ runner.os }}-cargo-build-
 
