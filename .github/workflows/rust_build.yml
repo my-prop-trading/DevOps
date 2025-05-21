@@ -50,6 +50,28 @@ jobs:
       - name: Get the version
         id: get_version
         run: echo "VERSION=${{ inputs.release_version }}" >> $GITHUB_OUTPUT
+
+      - name: Cache cargo build
+        if: ${{ github.ref_name != 'beta' && github.ref_name != 'main' }}
+        uses: actions/cache@v3
+        with:
+          # path: |
+          #   target
+          #   .cargo
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-build-
+
+      - name: Set up Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable        
         
       - name: Updating version
         run: sed -i -e 's/^version = .*/version = "${{ steps.get_version.outputs.VERSION }}"/' Cargo.toml
@@ -66,14 +88,14 @@ jobs:
       #   with:
       #     packages: build-essential libglib2.0-dev pkg-config libssl-dev libgtk-3-dev javascriptcoregtk-4.1 libsoup-3.0 webkit2gtk-4.1 protobuf-compiler
 
-      - run: sudo apt update || true
-        continue-on-error: true
-      - run: sudo apt install -y build-essential libglib2.0-dev pkg-config libssl-dev libgtk-3-dev
-      - run: sudo apt update
-        continue-on-error: true
-      - run: sudo apt upgrade -y
-        continue-on-error: true
-      - run: sudo apt-get install javascriptcoregtk-4.1 libsoup-3.0 webkit2gtk-4.1 -y
+      # - run: sudo apt update || true
+      #   continue-on-error: true
+      # - run: sudo apt install -y build-essential libglib2.0-dev pkg-config libssl-dev libgtk-3-dev
+      # - run: sudo apt update
+      #   continue-on-error: true
+      # - run: sudo apt upgrade -y
+      #   continue-on-error: true
+      # - run: sudo apt-get install javascriptcoregtk-4.1 libsoup-3.0 webkit2gtk-4.1 -y
 
       # - name: Set up cargo cache
       #   uses: actions/cache@v3
