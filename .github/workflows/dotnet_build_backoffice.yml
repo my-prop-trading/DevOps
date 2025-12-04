@@ -20,7 +20,7 @@ on:
         required: true
       DOCKER_PASSWORD:
         required: true
-      NEW_AUTH_TOKEN:
+      AUTH_TOKEN:
         required: true
       TELEGRAM_TO:
         required: false
@@ -91,7 +91,7 @@ jobs:
       with:
         repository: my-prop-trading/docker-infrastructure
         ref: main
-        token: ${{ secrets.NEW_AUTH_TOKEN }}
+        token: ${{ secrets.AUTH_TOKEN }}
     - run: |
         reg=s"/backoffice:[0-9].*/backoffice:${{ steps.get_version.outputs.VERSION }}/g"
         echo $reg
