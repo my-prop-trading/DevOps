@@ -34,9 +34,9 @@ on:
         
     secrets:
       DOCKER_USERNAME:  # no used
-        required: true
+        required: false
       DOCKER_PASSWORD:  # no used
-        required: true
+        required: false
       AUTH_TOKEN:
         required: true
       TELEGRAM_NOTIFICATION_TOKEN:
