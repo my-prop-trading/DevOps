@@ -33,6 +33,10 @@ on:
         default: ubuntu-latest
         
     secrets:
+      DOCKER_USERNAME:  # no used
+        required: true
+      DOCKER_PASSWORD:  # no used
+        required: true
       AUTH_TOKEN:
         required: true
       TELEGRAM_NOTIFICATION_TOKEN:
