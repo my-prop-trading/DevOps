@@ -535,10 +535,10 @@ jobs:
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
 
 #-------------- RELEASE DEPLOY ----------------#
-  deploy-on-demo:
+  deploy-on-stage:
     if: ${{  inputs.build_version == '' && github.event_name == 'release' && github.event.action == 'published' }}
     runs-on: ${{ inputs.image }}
-    name: "Deploy on DEMO"
+    name: "Deploy on STAGE"
     steps:
       - uses: actions/checkout@v3  
       
