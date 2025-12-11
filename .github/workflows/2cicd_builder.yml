@@ -686,7 +686,7 @@ jobs:
 
 #-------------- Send ERROR notification ----------------#
   notify-telegram-error:
-    needs: [test-rust, test-csharp, build-rust, build-csharp, deploy-on-server, deploy-on-demo]
+    needs: [test-rust, test-csharp, build-rust, build-csharp, deploy-on-server, deploy-on-stage]
     runs-on: ${{ inputs.image }}
     name: "Send ERROR notification"
     if: failure()
