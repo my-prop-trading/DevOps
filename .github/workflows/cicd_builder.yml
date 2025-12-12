@@ -33,10 +33,10 @@ on:
         default: ubuntu-latest
         
     secrets:
-      DOCKER_USERNAME:
-        required: true
-      DOCKER_PASSWORD:
-        required: true
+      DOCKER_USERNAME:  # no used
+        required: false
+      DOCKER_PASSWORD:  # no used
+        required: false
       AUTH_TOKEN:
         required: true
       TELEGRAM_NOTIFICATION_TOKEN:
@@ -54,7 +54,13 @@ on:
       SSH_ACCESS_DEMO_01:
         required: true
         
+permissions:
+  contents: read
+  packages: write
+
 jobs:         
+
+
 #-------------- TEST RUST ----------------#
   test-rust:
     if: ${{ inputs.language == 'rust' && github.event_name != 'release' && github.event.action != 'published' && inputs.build_version == '' && github.ref_name != 'main' }}
@@ -70,9 +76,6 @@ jobs:
         if: ${{ github.ref_name != 'beta' && github.ref_name != 'main' }}
         uses: actions/cache@v3
         with:
-          # path: |
-          #   target
-          #   .cargo
           path: |
             ~/.cargo/bin/
             ~/.cargo/registry/index/
@@ -100,6 +103,7 @@ jobs:
         with:
           command: test
 
+
 #-------------- TEST C# ----------------#
   test-csharp:
     if: ${{ inputs.language == 'csharp' && github.event_name != 'release' && github.event.action != 'published' && inputs.build_version == '' && github.ref_name != 'main' }}
@@ -121,6 +125,7 @@ jobs:
           dotnet build
           dotnet test
           
+
 #-------------- BUILD RUST ----------------#
   build-rust:
     # if: ${{ (inputs.language == 'rust' && github.event_name == 'release' && github.event.action == 'published') || (inputs.language == 'rust' && inputs.build_version != '' && github.ref_name != 'main') }}
@@ -148,9 +153,6 @@ jobs:
         if: ${{ github.ref_name != 'beta' && github.ref_name != 'main' }}
         uses: actions/cache@v3
         with:
-          # path: |
-          #   target
-          #   .cargo
           path: |
             ~/.cargo/bin/
             ~/.cargo/registry/index/
@@ -173,29 +175,26 @@ jobs:
         uses: arduino/setup-protoc@v3
       - run: openssl version
 
-      # # Install dependencies
-      # - run: sudo apt update
-      #   continue-on-error: true
-      # - run: sudo apt install -y build-essential libglib2.0-dev pkg-config libssl-dev libgtk-3-dev
-      # - run: sudo apt update && sudo apt upgrade -y
-      #   continue-on-error: true
-      # - run: sudo apt-get install javascriptcoregtk-4.1 libsoup-3.0 webkit2gtk-4.1 -y
-
       - name: Build project
         run: cargo build --release
 
       - name: List release files
         run: ls -la ./target/release
-        
-      - name: Build and Push Docker Image
-        uses: docker/build-push-action@v1
+
+      - name: Login to GHCR image registry
+        uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-          path: .
-          registry: docker.io
-          repository: ${{ inputs.image_name }}
-          tags: ${{ env.VERSION }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/my-prop-trading/${{ inputs.repository_name }}:${{ env.VERSION }}
+
           
   #-------------- BUILD C# ----------------#
   build-csharp:
@@ -247,16 +246,21 @@ jobs:
   
       - name: Check Service dir
         run: ls -la ./publish-api
-          
-      - name: Build and Push Docker Image
-        uses: docker/build-push-action@v1
+
+      - name: Login to GHCR image registry
+        uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-          path: ./publish-api
-          registry: docker.io
-          repository: ${{ inputs.image_name }}
-          tags: ${{ env.VERSION }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./publish-api
+          push: true
+          tags: ghcr.io/my-prop-trading/${{ inputs.repository_name }}:${{ env.VERSION }}
+
 
   #-------------- DEPLOY TO SERVER ----------------#
   deploy-on-server:
@@ -265,7 +269,7 @@ jobs:
     runs-on: ${{ inputs.image }}
     name: "Deploy on Server"
     steps:
-      - uses: actions/checkout@v3  
+      - uses: actions/checkout@v4  
       
       - name: Get last commit message
         id: get_commit
@@ -294,11 +298,13 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Using version: $VERSION"
 
+
       - name: Deploy to ALPHA
         if: ${{ inputs.service_type == 'server' && github.ref_name != 'beta' && github.ref_name != 'main' && inputs.build_version != '' && github.event_name != 'release' && github.event.action != 'published' }}
         run: |
           echo "DEPLOY_ENV=ALPHA" >> $GITHUB_ENV
 
+          # Получаем текущую версию на сервере
           CURRENT_VERSION=$(ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF'
             cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }} || { echo "Directory not found"; exit 1; }
             grep -Po "(?<=${{ inputs.repository_name }}:)[0-9].*" *.*ml || echo "unknown"
@@ -312,24 +318,44 @@ jobs:
             echo "Extracted version: $CURRENT_VERSION"
           fi
           echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
-          
+
+          # Деплой на сервер
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF'
             echo "------------ Starting deployment... ------------"
             cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
             git pull
-            reg=s"|/${{ inputs.repository_name }}:[0-9].*|/${{ inputs.repository_name }}:${{ env.VERSION }}|g"
-            echo $reg
-            echo "---------------------------------------"
-            find . -type f -name "*.*ml" -exec sed -i -r $reg {} \;
-            cat docker-compose.yaml
+
+            # Определяем текущий образ
+            OLD_IMAGE=$(grep -Po "(myproptrading|ghcr.io/my-prop-trading)/${{ inputs.repository_name }}:[0-9].*" *.*ml | tail -n 1)
+            if [[ -z "$OLD_IMAGE" ]]; then
+              echo "Error: unable to find current image"
+              exit 1
+            fi
+            echo "Old image: $OLD_IMAGE"
+
+            # Формируем новый образ
+            if [[ "$OLD_IMAGE" == myproptrading/* ]]; then
+              NEW_IMAGE="ghcr.io/my-prop-trading/${{ inputs.repository_name }}:${{ env.VERSION }}"
+            else
+              NEW_IMAGE=$(echo "$OLD_IMAGE" | sed -r "s/:.*$/:${{ env.VERSION }}/")
+            fi
+            echo "New image: $NEW_IMAGE"
+
+            # Обновляем образ во всех *.*ml файлах
+            find . -type f -name "*.*ml" -exec sed -i -r "s|$OLD_IMAGE|$NEW_IMAGE|g" {} \;
+
+            docker pull $NEW_IMAGE
             docker-compose up -d
+
+            # Коммитим изменения, если что-то изменилось
             if git status | grep -q modified; then
-              # git commit -a -m "Update ${{ inputs.repository_name }}:${{ inputs.build_version }}"
               git commit -a -m "Update ${{ inputs.repository_name }}:${{ env.VERSION }}"
               git push
             fi
             echo "------------ Finished deployment ! ------------"
           EOF
+
+
 
       - name: API Deploy to ALPHA
         if: ${{ inputs.service_type == 'api' && github.ref_name != 'beta' && github.ref_name != 'main' && inputs.build_version != '' && github.event_name != 'release' && github.event.action != 'published' }}
@@ -350,24 +376,42 @@ jobs:
             echo "Extracted version: $CURRENT_VERSION"
           fi
           echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
-          
+
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF'
             echo "------------ Starting API deployment... ------------"
             cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
             git pull
-            reg=s"|/${{ inputs.repository_name }}:[0-9].*|/${{ inputs.repository_name }}:${{ env.VERSION }}|g"
-            echo $reg
-            echo "---------------------------------------"
-            find . -type f -name "*.*ml" -exec sed -i -r $reg {} \;
-            cat docker-compose.yaml
+
+            # Определяем текущий образ
+            OLD_IMAGE=$(grep -Po "(myproptrading|ghcr.io/my-prop-trading)/${{ inputs.repository_name }}:[0-9].*" *.*ml | tail -n 1)
+            if [[ -z "$OLD_IMAGE" ]]; then
+              echo "Error: unable to find current image"
+              exit 1
+            fi
+            echo "Old image: $OLD_IMAGE"
+
+            # Формируем новый образ
+            if [[ "$OLD_IMAGE" == myproptrading/* ]]; then
+              NEW_IMAGE="ghcr.io/my-prop-trading/${{ inputs.repository_name }}:${{ env.VERSION }}"
+            else
+              NEW_IMAGE=$(echo "$OLD_IMAGE" | sed -r "s/:.*$/:${{ env.VERSION }}/")
+            fi
+            echo "New image: $NEW_IMAGE"
+
+            # Обновляем образ во всех *.*ml файлах
+            find . -type f -name "*.*ml" -exec sed -i -r "s|$OLD_IMAGE|$NEW_IMAGE|g" {} \;
+
+            docker pull $NEW_IMAGE
             docker-compose up -d
+
+            # Коммитим изменения, если что-то изменилось
             if git status | grep -q modified; then
-              # git commit -a -m "Update ${{ inputs.repository_name }}:${{ inputs.build_version }}"
               git commit -a -m "Update ${{ inputs.repository_name }}:${{ env.VERSION }}"
               git push
             fi
-            echo "------------ Finished API deployment ! ------------"
+            echo "------------ Finished deployment ! ------------"
           EOF
+
 
       - name: Deploy to BETA
         if: ${{ inputs.service_type == 'server' && github.ref_name == 'beta' && inputs.build_version != '' && github.event_name != 'release' && github.event.action != 'published' }}
@@ -390,16 +434,36 @@ jobs:
           echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
           
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_BETA_01 }} << 'EOF'
+
             echo "------------ Starting deployment... ------------"
             cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
-            reg=s"|/${{ inputs.repository_name }}:[0-9].*|/${{ inputs.repository_name }}:${{ env.VERSION }}|g"
-            echo $reg
-            echo "---------------------------------------"
-            find . -type f -name "*.*ml" -exec sed -i -r $reg {} \;
-            cat docker-compose.yaml
+
+            # Определяем текущий образ
+            OLD_IMAGE=$(grep -Po "(myproptrading|ghcr.io/my-prop-trading)/${{ inputs.repository_name }}:[0-9].*" *.*ml | tail -n 1)
+            if [[ -z "$OLD_IMAGE" ]]; then
+              echo "Error: unable to find current image"
+              exit 1
+            fi
+            echo "Old image: $OLD_IMAGE"
+
+            # Формируем новый образ
+            if [[ "$OLD_IMAGE" == myproptrading/* ]]; then
+              NEW_IMAGE="ghcr.io/my-prop-trading/${{ inputs.repository_name }}:${{ env.VERSION }}"
+            else
+              NEW_IMAGE=$(echo "$OLD_IMAGE" | sed -r "s/:.*$/:${{ env.VERSION }}/")
+            fi
+            echo "New image: $NEW_IMAGE"
+
+            # Обновляем образ во всех *.*ml файлах
+            find . -type f -name "*.*ml" -exec sed -i -r "s|$OLD_IMAGE|$NEW_IMAGE|g" {} \;
+
+            docker pull $NEW_IMAGE
             docker-compose up -d
             echo "------------ Finished deployment ! ------------"
           EOF
+
+
+
 
       - name: API Deploy to BETA
         if: ${{ inputs.service_type == 'api' && github.ref_name == 'beta' && inputs.build_version != '' && github.event_name != 'release' && github.event.action != 'published' }}
@@ -424,13 +488,29 @@ jobs:
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_BETA_04 }} << 'EOF'
             echo "------------ Starting API deployment... ------------"
             cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
-            reg=s"|/${{ inputs.repository_name }}:[0-9].*|/${{ inputs.repository_name }}:${{ env.VERSION }}|g"
-            echo $reg
-            echo "---------------------------------------"
-            find . -type f -name "*.*ml" -exec sed -i -r $reg {} \;
-            cat docker-compose.yaml
+
+            # Определяем текущий образ
+            OLD_IMAGE=$(grep -Po "(myproptrading|ghcr.io/my-prop-trading)/${{ inputs.repository_name }}:[0-9].*" *.*ml | tail -n 1)
+            if [[ -z "$OLD_IMAGE" ]]; then
+              echo "Error: unable to find current image"
+              exit 1
+            fi
+            echo "Old image: $OLD_IMAGE"
+
+            # Формируем новый образ
+            if [[ "$OLD_IMAGE" == myproptrading/* ]]; then
+              NEW_IMAGE="ghcr.io/my-prop-trading/${{ inputs.repository_name }}:${{ env.VERSION }}"
+            else
+              NEW_IMAGE=$(echo "$OLD_IMAGE" | sed -r "s/:.*$/:${{ env.VERSION }}/")
+            fi
+            echo "New image: $NEW_IMAGE"
+
+            # Обновляем образ во всех *.*ml файлах
+            find . -type f -name "*.*ml" -exec sed -i -r "s|$OLD_IMAGE|$NEW_IMAGE|g" {} \;
+
+            docker pull $NEW_IMAGE
             docker-compose up -d
-            echo "------------ Finished API deployment ! ------------"
+            echo "------------ Finished deployment ! ------------"
           EOF
           
       - name: Send deploy notification
@@ -455,10 +535,10 @@ jobs:
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
 
 #-------------- RELEASE DEPLOY ----------------#
-  deploy-on-demo:
+  deploy-on-stage:
     if: ${{  inputs.build_version == '' && github.event_name == 'release' && github.event.action == 'published' }}
     runs-on: ${{ inputs.image }}
-    name: "Deploy on DEMO"
+    name: "Deploy on STAGE"
     steps:
       - uses: actions/checkout@v3  
       
@@ -489,10 +569,10 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Using version: $VERSION"
 
-      - name: Deploy to DEMO
+      - name: Deploy to STAGE
         if: ${{ inputs.service_type == 'server'  && inputs.build_version == '' && github.event_name == 'release' && github.event.action == 'published' }}
         run: |
-          echo "DEPLOY_ENV=DEMO" >> $GITHUB_ENV
+          echo "DEPLOY_ENV=STAGE" >> $GITHUB_ENV
 
           CURRENT_VERSION=$(ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_DEMO_01 }} << 'EOF'
             cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }} || { echo "Directory not found"; exit 1; }
@@ -511,19 +591,35 @@ jobs:
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_DEMO_01 }} << 'EOF'
             echo "------------ Starting deployment... ------------"
             cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
-            reg=s"|/${{ inputs.repository_name }}:[0-9].*|/${{ inputs.repository_name }}:${{ env.VERSION }}|g"
-            echo $reg
-            echo "---------------------------------------"
-            find . -type f -name "*.*ml" -exec sed -i -r $reg {} \;
-            cat docker-compose.yaml
+
+            # Определяем текущий образ
+            OLD_IMAGE=$(grep -Po "(myproptrading|ghcr.io/my-prop-trading)/${{ inputs.repository_name }}:[0-9].*" *.*ml | tail -n 1)
+            if [[ -z "$OLD_IMAGE" ]]; then
+              echo "Error: unable to find current image"
+              exit 1
+            fi
+            echo "Old image: $OLD_IMAGE"
+
+            # Формируем новый образ
+            if [[ "$OLD_IMAGE" == myproptrading/* ]]; then
+              NEW_IMAGE="ghcr.io/my-prop-trading/${{ inputs.repository_name }}:${{ env.VERSION }}"
+            else
+              NEW_IMAGE=$(echo "$OLD_IMAGE" | sed -r "s/:.*$/:${{ env.VERSION }}/")
+            fi
+            echo "New image: $NEW_IMAGE"
+
+            # Обновляем образ во всех *.*ml файлах
+            find . -type f -name "*.*ml" -exec sed -i -r "s|$OLD_IMAGE|$NEW_IMAGE|g" {} \;
+
+            docker pull $NEW_IMAGE
             docker-compose up -d
             echo "------------ Finished deployment ! ------------"
           EOF
 
-      - name: API Deploy to DEMO
+      - name: API Deploy to STAGE
         if: ${{ inputs.service_type == 'api'  && inputs.build_version == '' && github.event_name == 'release' && github.event.action == 'published' }}
         run: |
-          echo "DEPLOY_ENV=DEMO" >> $GITHUB_ENV
+          echo "DEPLOY_ENV=STAGE" >> $GITHUB_ENV
 
           CURRENT_VERSION=$(ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_DEMO_01 }} << 'EOF'
             cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }} || { echo "Directory not found"; exit 1; }
@@ -542,13 +638,29 @@ jobs:
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_DEMO_01 }} << 'EOF'
             echo "------------ Starting API deployment... ------------"
             cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
-            reg=s"|/${{ inputs.repository_name }}:[0-9].*|/${{ inputs.repository_name }}:${{ env.VERSION }}|g"
-            echo $reg
-            echo "---------------------------------------"
-            find . -type f -name "*.*ml" -exec sed -i -r $reg {} \;
-            cat docker-compose.yaml
+
+            # Определяем текущий образ
+            OLD_IMAGE=$(grep -Po "(myproptrading|ghcr.io/my-prop-trading)/${{ inputs.repository_name }}:[0-9].*" *.*ml | tail -n 1)
+            if [[ -z "$OLD_IMAGE" ]]; then
+              echo "Error: unable to find current image"
+              exit 1
+            fi
+            echo "Old image: $OLD_IMAGE"
+
+            # Формируем новый образ
+            if [[ "$OLD_IMAGE" == myproptrading/* ]]; then
+              NEW_IMAGE="ghcr.io/my-prop-trading/${{ inputs.repository_name }}:${{ env.VERSION }}"
+            else
+              NEW_IMAGE=$(echo "$OLD_IMAGE" | sed -r "s/:.*$/:${{ env.VERSION }}/")
+            fi
+            echo "New image: $NEW_IMAGE"
+
+            # Обновляем образ во всех *.*ml файлах
+            find . -type f -name "*.*ml" -exec sed -i -r "s|$OLD_IMAGE|$NEW_IMAGE|g" {} \;
+
+            docker pull $NEW_IMAGE
             docker-compose up -d
-            echo "------------ Finished API deployment ! ------------"
+            echo "------------ Finished deployment ! ------------"
           EOF
   
       - name: Send deploy notification
@@ -574,7 +686,7 @@ jobs:
 
 #-------------- Send ERROR notification ----------------#
   notify-telegram-error:
-    needs: [test-rust, test-csharp, build-rust, build-csharp, deploy-on-server, deploy-on-demo]
+    needs: [test-rust, test-csharp, build-rust, build-csharp, deploy-on-server, deploy-on-stage]
     runs-on: ${{ inputs.image }}
     name: "Send ERROR notification"
     if: failure()
@@ -615,4 +727,4 @@ jobs:
             echo "No jobs failed."
           fi
 
- #--------------------------------------------------------------------------------------------------#         
+ #--------------------------------------------------------------------------------------------------#   
