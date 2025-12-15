@@ -66,6 +66,12 @@ jobs:
     #   uses: ASzc/change-string-case-action@v1
     #   with:
     #     string: ${{ inputs.repository_name }}
+
+    - name: Normalize image name
+      id: image_name
+      run: |
+        echo "NAME=$(echo '${{ inputs.repository_name }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
         
     - name: Login to GHCR image registry
       uses: docker/login-action@v3
@@ -74,17 +80,26 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Build and Push
+    # - name: Build and Push
+    #   uses: docker/build-push-action@v5
+    #   with:
+    #     context: ./publish-api
+    #     push: true
+    #     tags: ghcr.io/my-prop-trading/${{ inputs.repository_name }}:${{ inputs.release_version }}
+
+    - name: Build and Push image to GHCR
       uses: docker/build-push-action@v5
       with:
         context: ./publish-api
         push: true
-        tags: ghcr.io/my-prop-trading/${{ inputs.repository_name }}:${{ inputs.release_version }}
+        tags: |
+          ghcr.io/my-prop-trading/${{ steps.image_name.outputs.NAME }}:${{ env.VERSION }}
 
-    - name: Show image tag
-      run: |
-        echo ":whale: Tags <code>${{ inputs.release_version }}</code>" >> $GITHUB_STEP_SUMMARY
-        echo "ghcr.io/my-prop-trading/${{ inputs.repository_name }}:${{ inputs.release_version }}" >> $GITHUB_STEP_SUMMARY
+
+    # - name: Show image tag
+    #   run: |
+    #     echo ":whale: Tags <code>${{ inputs.release_version }}</code>" >> $GITHUB_STEP_SUMMARY
+    #     echo "ghcr.io/my-prop-trading/${{ inputs.repository_name }}:${{ inputs.release_version }}" >> $GITHUB_STEP_SUMMARY
   
   docker-deploy:
     needs: [build]
