@@ -62,10 +62,10 @@ jobs:
     - name: Check Service dir
       run: ls ./publish-api
 
-    - id: string
-      uses: ASzc/change-string-case-action@v1
-      with:
-        string: ${{ inputs.repository_name }}
+    # - id: string
+    #   uses: ASzc/change-string-case-action@v1
+    #   with:
+    #     string: ${{ inputs.repository_name }}
         
     - name: Login to GHCR image registry
       uses: docker/login-action@v3
@@ -79,8 +79,12 @@ jobs:
       with:
         context: ./publish-api
         push: true
-        tags: ghcr.io/my-prop-trading/${{ steps.string.outputs.lowercase }}
-        # tag_with_ref: true
+        tags: ghcr.io/my-prop-trading/${{ inputs.repository_name }}:${{ inputs.release_version }}
+
+    - name: Show image tag
+      run: |
+        echo ":whale: Tags <code>${{ inputs.release_version }}</code>" >> $GITHUB_STEP_SUMMARY
+        echo "ghcr.io/my-prop-trading/${{ inputs.repository_name }}:${{ inputs.release_version }}" >> $GITHUB_STEP_SUMMARY
   
   docker-deploy:
     needs: [build]
