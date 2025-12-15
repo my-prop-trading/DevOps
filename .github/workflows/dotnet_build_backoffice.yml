@@ -79,8 +79,8 @@ jobs:
       with:
         context: ./publish-api
         push: true
-        tags: ghcr.io/my-prop-trading/${{ inputs.repository_name }}:${{ env.VERSION }}
-        tag_with_ref: true
+        tags: ghcr.io/my-prop-trading/${{ steps.string.outputs.lowercase }}
+        # tag_with_ref: true
   
   docker-deploy:
     needs: [build]
