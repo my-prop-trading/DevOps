@@ -516,7 +516,7 @@ jobs:
       - name: Send deploy notification
         run: |
           user="Launched deploy by: ${{ github.actor }}"
-          reason="Last commit: ${{ env.COMMIT_MESSAGE }}"
+          reason="Last commit: ${COMMIT_MESSAGE//\"/\\\"}"
           version_info="Version: ${{ env.CURRENT_VERSION }} ---> ${{ env.VERSION }}"
           date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
           pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
