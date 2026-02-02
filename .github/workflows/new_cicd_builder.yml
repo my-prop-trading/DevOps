@@ -294,7 +294,7 @@ jobs:
     needs: [ build-csharp, build-rust ]
     if: ${{ always() && contains(needs.*.result, 'success') && !(contains(needs.*.result, 'failure')) }}
     runs-on: ${{ inputs.image }}
-    name: "Deploy on ALPHA"
+    name: "[alpha] Deploy on server"
     steps:
       - uses: actions/checkout@v4  
       
