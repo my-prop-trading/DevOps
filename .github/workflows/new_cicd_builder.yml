@@ -327,7 +327,7 @@ jobs:
 
 
       - name: Deploy to ALPHA
-        if: ${{ inputs.service_type == 'server' && github.ref_name != 'main' && inputs.build_version != '' && github.event_name != 'release' && github.event.action != 'published' }}
+        if: ${{ github.ref_name != 'main' && inputs.build_version != '' && github.event_name != 'release' && github.event.action != 'published' }}
         run: |
           echo "DEPLOY_ENV=ALPHA" >> $GITHUB_ENV
 
