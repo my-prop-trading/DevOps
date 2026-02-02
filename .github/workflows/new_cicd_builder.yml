@@ -616,23 +616,82 @@ jobs:
             echo "------------ Finished API deployment (${{ matrix.location }})! ------------"
           EOF
 
+      # - name: Notify API deploy (${{ matrix.location }})
+      #   if: ${{ always() && steps.deploy_api.outcome != '' }}
+      #   run: |
+      #     set -euo pipefail
+      #     status="${{ steps.deploy_api.outcome }}"
+
+      #     user="Launched deploy by: ${{ github.actor }}"
+      #     reason="Last commit: ${{ env.COMMIT_MESSAGE }}"
+      #     date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
+      #     pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+      #     meta="Type: API\nLocation: ${{ matrix.location }}"
+      #     version_info="${CURRENT_VERSION:-unknown} ---> ${{ env.VERSION }}"
+
+      #     curl --request POST --header "Content-Type: application/json" \
+      #       --data "{\"text\":\"[RELEASE] Deploy result: ${status}\n\nService: ${{ inputs.repository_name }}\n${meta}\n\n${version_info}\n\n${user}\n${reason}\n${date}\n\nAction URL:\n$pipeline_url\"}" \
+      #       "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
+
+
       - name: Notify API deploy (${{ matrix.location }})
         if: ${{ always() && steps.deploy_api.outcome != '' }}
+        shell: bash
         run: |
           set -euo pipefail
           status="${{ steps.deploy_api.outcome }}"
-
-          user="Launched deploy by: ${{ github.actor }}"
-          reason="Last commit: ${{ env.COMMIT_MESSAGE }}"
-          date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
-          pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
-          meta="Type: api\nLocation: ${{ matrix.location }}"
-          version_info="${{ matrix.location }}: ${CURRENT_VERSION:-unknown} ---> ${{ env.VERSION }}"
-
+      
+          service="${{ inputs.repository_name }}"
+          location="${{ matrix.location }}"
+          version_new="${{ env.VERSION }}"
+          version_old="${CURRENT_VERSION:-unknown}"
+      
+          user="${{ github.actor }}"
+          reason="${{ env.COMMIT_MESSAGE }}"
+          date="$(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
+          url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      
+          if [[ "$status" == "success" ]]; then
+            icon="✅"
+            title="*RELEASE Deploy Successful*"
+          elif [[ "$status" == "failure" ]]; then
+            icon="❌"
+            title="*RELEASE Deploy Failed*"
+          else
+            icon="⚠️"
+            title="*RELEASE Deploy: $status*"
+          fi
+      
+          # Экранирование для Telegram MarkdownV2
+          esc() { sed -e 's/\\/\\\\/g' -e 's/\./\\./g' -e 's/\-/\\-/g' -e 's/(/\\(/g' -e 's/)/\\)/g' -e 's/\[/\\[/g' -e 's/\]/\\]/g' -e 's/_/\\_/g' -e 's/\*/\\*/g' -e 's/`/\\`/g' -e 's/>/\\>/g' -e 's/#/\\#/g' -e 's/+/\\+/g' -e 's/=/\\=/g' -e 's/|/\\|/g' -e 's/{/\\{/g' -e 's/}/\\}/g' -e 's/!/\\!/g'; }
+      
+          service_e=$(printf "%s" "$service" | esc)
+          location_e=$(printf "%s" "$location" | esc)
+          user_e=$(printf "%s" "$user" | esc)
+          reason_e=$(printf "%s" "$reason" | esc)
+          date_e=$(printf "%s" "$date" | esc)
+          vold_e=$(printf "%s" "$version_old" | esc)
+          vnew_e=$(printf "%s" "$version_new" | esc)
+          url_e=$(printf "%s" "$url" | esc)
+      
+          msg="$icon $title
+          
+      *Service:* $service_e
+      *Type:* API
+      *Location:* $location_e
+      
+      *Version:* \`$vold_e\` → \`$vnew_e\`
+      
+      *By:* $user_e
+      *Commit:* $reason_e
+      *Time:* $date_e
+      
+      [Open workflow run]($url_e)"
+      
           curl --request POST --header "Content-Type: application/json" \
-            --data "{\"text\":\"[PROD] Deploy result: ${status}\n\nService: ${{ inputs.repository_name }}\n${meta}\n\n${version_info}\n\n${user}\n${reason}\n${date}\n\nAction URL:\n$pipeline_url\"}" \
-            "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
+            --data "$(jq -n --arg chat_id "${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}" --arg text "$msg" '{chat_id:$chat_id, text:$text, parse_mode:"MarkdownV2"}')" \
+            "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage"
 
 
 #-------------- Send ERROR notification ----------------#
