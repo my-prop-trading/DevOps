@@ -441,8 +441,7 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Using version: $VERSION"
 
-      #--------------  [US] DEPLOY TO PROD microservices ----------------#
-      - name: PROD-US - Deploy microservices
+      - name: Deploy microservices
         if: ${{ github.ref_name == 'main' && inputs.service_type == 'server' && inputs.build_version == '' && github.event_name == 'release' && github.event.action == 'published' }}
 
         id: deploy_server_us
@@ -518,7 +517,7 @@ jobs:
     # if: ${{ inputs.service_type == 'api' && github.event.release.target_commitish == 'main' && (inputs.build_version == '' || inputs.build_version == null) && github.event_name == 'release' && github.event.action == 'published' }}
     if: ${{  inputs.build_version == '' && github.event_name == 'release' && github.event.action == 'published' }}
     runs-on: ${{ inputs.image }}
-    name: "[(${{ matrix.location }})] Deploy API on PROD"
+    name: "[${{ matrix.location }}] Deploy API on PROD"
 
     strategy:
       # US как gate: если US упал — SG не запускаем
