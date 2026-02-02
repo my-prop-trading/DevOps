@@ -43,6 +43,8 @@ on:
         required: false
       TELEGRAM_GITHAB_CHAT_ID:
         required: false
+      TELEGRAM_RELEASE_CHAT_ID:
+        required: false
       SSH_KEY_FOR_DEPLOY:
         required: true
       SSH_ACCESS_ALPHA_01:
@@ -508,7 +510,7 @@ jobs:
           version_info="US: ${CURRENT_VERSION:-unknown} ---> ${{ env.VERSION }}"
           curl --request POST --header "Content-Type: application/json" \
             --data "{\"text\":\"[PROD] Deploy result: ${status}\n\nService: ${{ inputs.repository_name }}\n${meta}\n\n${version_info}\n\n${user}\n${reason}\n${date}\n\nAction URL:\n$pipeline_url\"}" \
-            "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
+            "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_RELEASE_CHAT_ID }}"
 
 
   #-------------- DEPLOY API TO PROD (matrix US, SG) ----------------#
@@ -632,7 +634,7 @@ jobs:
 
       #     curl --request POST --header "Content-Type: application/json" \
       #       --data "{\"text\":\"[RELEASE] Deploy result: ${status}\n\nService: ${{ inputs.repository_name }}\n${meta}\n\n${version_info}\n\n${user}\n${reason}\n${date}\n\nAction URL:\n$pipeline_url\"}" \
-      #       "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
+      #       "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_RELEASE_CHAT_ID }}"
 
 
       - name: Notify API deploy (${{ matrix.location }})
@@ -690,7 +692,7 @@ jobs:
       [Open workflow run]($url_e)"
       
           curl --request POST --header "Content-Type: application/json" \
-            --data "$(jq -n --arg chat_id "${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}" --arg text "$msg" '{chat_id:$chat_id, text:$text, parse_mode:"MarkdownV2"}')" \
+            --data "$(jq -n --arg chat_id "${{ secrets.TELEGRAM_RELEASE_CHAT_ID }}" --arg text "$msg" '{chat_id:$chat_id, text:$text, parse_mode:"MarkdownV2"}')" \
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage"
 
 
