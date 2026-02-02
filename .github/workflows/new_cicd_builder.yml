@@ -581,7 +581,7 @@ jobs:
           CURRENT_VERSION=$(ssh -o StrictHostKeyChecking=no "$SSH_TARGET" << 'EOF'
             cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }} || { echo "Directory not found"; exit 1; }
             grep -Po "(?<=${{ inputs.repository_name }}:)[0-9].*" *.*ml || echo "unknown"
-            EOF
+          EOF
           )
 
           CURRENT_VERSION=$(echo "$CURRENT_VERSION" | grep -Eo '[0-9].*' | tail -n 1)
