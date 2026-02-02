@@ -513,12 +513,9 @@ jobs:
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
 
 
-
-
-
   #-------------- DEPLOY API TO PROD (matrix US, SG) ----------------#
   deploy-api-on-prod:
-    if: ${{ inputs.service_type == 'api' && github.ref_name == 'main' && inputs.build_version == '' && github.event_name == 'release' && github.event.action == 'published' }}
+    if: ${{ inputs.service_type == 'api' && github.ref_name == 'main' && (inputs.build_version == '' || inputs.build_version == null) && github.event_name == 'release' && github.event.action == 'published' }}
     runs-on: ${{ inputs.image }}
     name: "[(${{ matrix.location }})] Deploy API on PROD"
 
