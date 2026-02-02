@@ -665,7 +665,7 @@ jobs:
             title="*RELEASE Deploy: $status*"
           fi
       
-          # Экранирование для Telegram MarkdownV2
+          # Экранирование MarkdownV2 для Telegram
           esc() { sed -e 's/\\/\\\\/g' -e 's/\./\\./g' -e 's/\-/\\-/g' -e 's/(/\\(/g' -e 's/)/\\)/g' -e 's/\[/\\[/g' -e 's/\]/\\]/g' -e 's/_/\\_/g' -e 's/\*/\\*/g' -e 's/`/\\`/g' -e 's/>/\\>/g' -e 's/#/\\#/g' -e 's/+/\\+/g' -e 's/=/\\=/g' -e 's/|/\\|/g' -e 's/{/\\{/g' -e 's/}/\\}/g' -e 's/!/\\!/g'; }
       
           service_e=$(printf "%s" "$service" | esc)
@@ -677,23 +677,28 @@ jobs:
           vnew_e=$(printf "%s" "$version_new" | esc)
           url_e=$(printf "%s" "$url" | esc)
       
-          msg="$icon $title
+          # ✅ собираем многострочное сообщение безопасно
+          msg="$(cat <<EOF
+          $icon $title
           
-      *Service:* $service_e
-      *Type:* API
-      *Location:* $location_e
-      
-      *Version:* \`$vold_e\` → \`$vnew_e\`
-      
-      *By:* $user_e
-      *Commit:* $reason_e
-      *Time:* $date_e
-      
-      [Open workflow run]($url_e)"
+          *Service:* $service_e
+          *Type:* API
+          *Location:* $location_e
+          
+          *Version:* \`$vold_e\` → \`$vnew_e\`
+          
+          *By:* $user_e
+          *Commit:* $reason_e
+          *Time:* $date_e
+          
+          [Open workflow run]($url_e)
+          EOF
+              )"
       
           curl --request POST --header "Content-Type: application/json" \
             --data "$(jq -n --arg chat_id "${{ secrets.TELEGRAM_RELEASE_CHAT_ID }}" --arg text "$msg" '{chat_id:$chat_id, text:$text, parse_mode:"MarkdownV2"}')" \
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage"
+
 
 
 #-------------- Send ERROR notification ----------------#
