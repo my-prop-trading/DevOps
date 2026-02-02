@@ -518,8 +518,7 @@ jobs:
 
   #-------------- DEPLOY API TO PROD (matrix US, SG) ----------------#
   deploy-api-on-prod:
-    needs: [ build-csharp, build-rust ]
-    if: ${{ github.ref_name == 'main' && inputs.service_type == 'api' && inputs.build_version == '' && github.event_name == 'release' && github.event.action == 'published' }}
+    if: ${{ inputs.service_type == 'api' && github.ref_name == 'main' && inputs.build_version == '' && github.event_name == 'release' && github.event.action == 'published' }}
     runs-on: ${{ inputs.image }}
     name: "Deploy API on PROD (${{ matrix.location }})"
 
