@@ -1,0 +1,684 @@
+name: CI/CD Main Pipeline
+
+on:
+  workflow_call:
+    inputs:
+      language:
+        required: true
+        type: string
+      service_type:
+        required: false
+        type: string
+      build_folder:
+        required: false
+        type: string
+      build_version:
+        required: false
+        type: string
+      repository_name:
+        required: true
+        type: string
+      release_version:
+        required: false
+        type: string
+      commit_message:
+        required: false
+        type: string      
+      image_name:
+        required: true
+        type: string
+      image:
+        required: false
+        type: string
+        default: ubuntu-latest
+        
+    secrets:
+      DOCKER_USERNAME:  # no used
+        required: false
+      DOCKER_PASSWORD:  # no used
+        required: false
+      AUTH_TOKEN:
+        required: true
+      TELEGRAM_NOTIFICATION_TOKEN:
+        required: false
+      TELEGRAM_GITHAB_CHAT_ID:
+        required: false
+      SSH_KEY_FOR_DEPLOY:
+        required: true
+      SSH_ACCESS_ALPHA_01:
+        required: true
+      SSH_ACCESS_US_01:
+        required: true
+      SSH_ACCESS_SG_01:
+        required: true
+        
+permissions:
+  contents: read
+  packages: write
+
+jobs:         
+
+
+#-------------- TEST RUST ----------------#
+  test-rust:
+    if: ${{ inputs.language == 'rust' && github.event_name != 'release' && github.event.action != 'published' && inputs.build_version == '' && github.ref_name != 'main' }}
+    runs-on: ${{ inputs.image }}
+    name: "[RUST] Test code"
+    steps:
+      - uses: actions/checkout@v4
+
+      # - name: Check dump all context
+      #   uses: crazy-max/ghaction-dump-context@v2
+
+      - name: Cache cargo build
+        if: ${{ github.ref_name != 'beta' && github.ref_name != 'main' }}
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-test-${{ inputs.repository_name }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-test-
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+      - run: openssl version
+
+      - name: Start cargo test
+        uses: actions-rs/cargo@v1
+        continue-on-error: false
+        with:
+          command: test
+
+
+#-------------- TEST C# ----------------#
+  test-csharp:
+    if: ${{ inputs.language == 'csharp' && github.event_name != 'release' && github.event.action != 'published' && inputs.build_version == '' && github.ref_name != 'main' }}
+    runs-on: ${{ inputs.image }}
+    name: "[C#] Test code"
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: 8.0.*
+          source-url: https://nuget.pkg.github.com/my-prop-trading/index.json
+        env:
+          NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
+      - name: Start csharp test
+        run: |
+          dotnet build
+          dotnet test
+
+
+#-------------- BUILD RUST ----------------#
+  build-rust:
+    # if: ${{ (inputs.language == 'rust' && github.event_name == 'release' && github.event.action == 'published') || (inputs.language == 'rust' && inputs.build_version != '' && github.ref_name != 'main') }}
+    if: ${{ inputs.language == 'rust' && github.event_name != 'release' && github.event.action != 'published' && inputs.build_version != '' && github.ref_name != 'main' }}
+    runs-on: ${{ inputs.image }}
+    name: "[RUST] Build code"
+    steps:
+      - uses: actions/checkout@v4
+
+      # - name: Check dump all context
+      #   uses: crazy-max/ghaction-dump-context@v2
+
+      - name: Get release version
+        id: get_version
+        run: |
+          if [ -z "${{ inputs.build_version }}" ]; then
+            VERSION="${{ inputs.release_version }}"
+          else
+            VERSION="${{ inputs.build_version }}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Using version: $VERSION"
+
+      - name: Cache cargo build
+        if: ${{ github.ref_name != 'beta' && github.ref_name != 'main' }}
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-build-${{ inputs.repository_name }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-build-
+
+      - name: Set up Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Update version in Cargo.toml
+        run: sed -i -e 's/^version = .*/version = "${{ env.VERSION }}"/' Cargo.toml
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+      - run: openssl version
+
+      - name: Build project
+        run: cargo build --release
+
+      - name: List release files
+        run: ls -la ./target/release
+
+      - name: Login to GHCR image registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+
+      - name: Fail if image tag already exists in GHCR
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE="ghcr.io/my-prop-trading/${{ inputs.repository_name }}:${{ env.VERSION }}"
+          echo "Checking if tag exists: $IMAGE"
+
+          if docker manifest inspect "$IMAGE" >/dev/null 2>&1; then
+            echo "::error title=Tag already exists::Image tag already exists in registry: $IMAGE"
+            exit 1
+          else
+            echo "OK: tag does not exist, continuing."
+          fi
+
+      - name: Build and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/my-prop-trading/${{ inputs.repository_name }}:${{ env.VERSION }}
+
+          
+  #-------------- BUILD C# ----------------#
+  build-csharp:
+    # if: ${{ (inputs.language == 'csharp' && github.event_name == 'release' && github.event.action == 'published') || (inputs.language == 'csharp' && inputs.build_version != '' && github.ref_name != 'main') }}
+    if: ${{ inputs.language == 'csharp' && github.event_name != 'release' && github.event.action != 'published' && inputs.build_version != '' && github.ref_name != 'main' }}
+    runs-on: ${{ inputs.image }}
+    name: "[C#] Build code"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get release version
+        id: get_version
+        run: |
+          if [ -z "${{ inputs.build_version }}" ]; then
+            VERSION="${{ inputs.release_version }}"
+          else
+            VERSION="${{ inputs.build_version }}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          VERSION_RC=$(echo $VERSION | sed 's/-.*//')
+          echo "VERSION-RC=$VERSION_RC" >> $GITHUB_ENV
+          echo "Using version: $VERSION"
+          echo "Using version for AssemblyVersion: $VERSION_RC"
+          
+      - name: Change version in config file
+        run: |
+          cd ${{ inputs.build_folder }}
+          ver=${{ env.VERSION-RC }}
+          sed -i "s|<Version>.*|<Version>${ver}<\/Version>|g" ${{ inputs.build_folder }}.csproj
+          cat ${{ inputs.build_folder }}.csproj
+          
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: 8.0.*
+          source-url: https://nuget.pkg.github.com/my-prop-trading/index.json
+        env:
+          NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+  
+      - name: Restore microservice
+        run: dotnet restore
+        continue-on-error: true
+  
+      - name: Build microservice
+        run: dotnet build --no-restore --configuration Release /p:AssemblyVersion=${{ env.VERSION-RC }}
+  
+      - name: Publish microservice
+        run: dotnet publish ./${{ inputs.build_folder }}/${{ inputs.build_folder }}.csproj --configuration Release /p:AssemblyVersion=${{ env.VERSION-RC }} --output ./publish-api
+  
+      - name: Check Service dir
+        run: ls -la ./publish-api
+
+      - name: Login to GHCR image registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fail if image tag already exists in GHCR
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE="ghcr.io/my-prop-trading/${{ inputs.repository_name }}:${{ env.VERSION }}"
+          echo "Checking if tag exists: $IMAGE"
+
+          if docker manifest inspect "$IMAGE" >/dev/null 2>&1; then
+            echo "::error title=Tag already exists::Image tag already exists in registry: $IMAGE"
+            exit 1
+          else
+            echo "OK: tag does not exist, continuing."
+          fi
+
+      - name: Build and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./publish-api
+          push: true
+          tags: ghcr.io/my-prop-trading/${{ inputs.repository_name }}:${{ env.VERSION }}
+
+
+  #-------------- DEPLOY TO ALPHA ----------------#
+  deploy-on-alpha:
+    needs: [ build-csharp, build-rust ]
+    if: ${{ always() && contains(needs.*.result, 'success') && !(contains(needs.*.result, 'failure')) }}
+    runs-on: ${{ inputs.image }}
+    name: "Deploy on ALPHA"
+    steps:
+      - uses: actions/checkout@v4  
+      
+      - name: Get last commit message
+        id: get_commit
+        continue-on-error: true
+        run: |
+          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+          echo $COMMIT_MESSAGE
+          echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
+          
+      - name: Configure SSH
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.SSH_KEY_FOR_DEPLOY }}
+          
+      # - name: Check dump all context
+      #   uses: crazy-max/ghaction-dump-context@v2
+
+      - name: Get release version
+        id: get_version
+        run: |
+          if [ -z "${{ inputs.build_version }}" ]; then
+            VERSION="${{ inputs.release_version }}"
+          else
+            VERSION="${{ inputs.build_version }}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Using version: $VERSION"
+
+
+      - name: Deploy to ALPHA
+        if: ${{ inputs.service_type == 'server' && github.ref_name != 'main' && inputs.build_version != '' && github.event_name != 'release' && github.event.action != 'published' }}
+        run: |
+          echo "DEPLOY_ENV=ALPHA" >> $GITHUB_ENV
+
+          # Получаем текущую версию на сервере
+          CURRENT_VERSION=$(ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF'
+            cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }} || { echo "Directory not found"; exit 1; }
+            grep -Po "(?<=${{ inputs.repository_name }}:)[0-9].*" *.*ml || echo "unknown"
+          EOF
+          )
+          CURRENT_VERSION=$(echo "$CURRENT_VERSION" | grep -Eo '[0-9].*' | tail -n 1)
+          if [[ -z "$CURRENT_VERSION" ]]; then
+            echo "Error: Unable to extract current version"
+            exit 1
+          else
+            echo "Extracted version: $CURRENT_VERSION"
+          fi
+          echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
+
+          # Деплой на сервер
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_ALPHA_01 }} << 'EOF'
+            set -euo pipefail
+            echo "------------ Starting deployment... ------------"
+            cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
+            git pull
+
+            # Определяем текущий образ
+            OLD_IMAGE=$(grep -Po "(myproptrading|ghcr.io/my-prop-trading)/${{ inputs.repository_name }}:[0-9].*" *.*ml | tail -n 1)
+            if [[ -z "$OLD_IMAGE" ]]; then
+              echo "Error: unable to find current image"
+              exit 1
+            fi
+            echo "Old image: $OLD_IMAGE"
+
+            # Формируем новый образ
+            if [[ "$OLD_IMAGE" == myproptrading/* ]]; then
+              NEW_IMAGE="ghcr.io/my-prop-trading/${{ inputs.repository_name }}:${{ env.VERSION }}"
+            else
+              NEW_IMAGE=$(echo "$OLD_IMAGE" | sed -r "s/:.*$/:${{ env.VERSION }}/")
+            fi
+            echo "New image: $NEW_IMAGE"
+
+            # Обновляем образ во всех *.*ml файлах
+            find . -type f -name "*.*ml" -exec sed -i -r "s|$OLD_IMAGE|$NEW_IMAGE|g" {} \;
+
+            docker pull "$NEW_IMAGE"
+            docker-compose up -d
+
+            # Коммитим изменения, если что-то изменилось
+            if git status | grep -q modified; then
+              git commit -a -m "Update ${{ inputs.repository_name }}:${{ env.VERSION }}"
+              git push
+            fi
+            echo "------------ Finished deployment ! ------------"
+          EOF
+
+          
+      - name: Send deploy notification
+        run: |
+          user="Launched deploy by: ${{ github.actor }}"
+          reason="Last commit: ${COMMIT_MESSAGE//\"/\\\"}"
+          version_info="Version: ${{ env.CURRENT_VERSION }} ---> ${{ env.VERSION }}"
+          date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
+          pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          IFS='.' read -r CURRENT_MAJOR CURRENT_MINOR CURRENT_PATCH <<< "${{ env.CURRENT_VERSION }}"
+          IFS='.' read -r NEW_MAJOR NEW_MINOR NEW_PATCH <<< "${{ env.VERSION }}"
+          
+          if [[ "$CURRENT_MAJOR" -ne "$NEW_MAJOR" || "$CURRENT_MINOR" -ne "$NEW_MINOR" ]]; then
+            extra_message="!!! Attention: Major version change detected! Please check settings or DataBase configuration !!!"
+          else
+            extra_message=""
+          fi
+
+          curl --request POST --header "Content-Type: application/json" \
+            --data "{\"text\":\"[${{ env.DEPLOY_ENV }}] GitHub Deploy Info:\n\n Service: ${{ inputs.repository_name }}\n $version_info\n\n $extra_message\n\n $user\n $reason\n $date\n\n Action URL:\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+            "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
+
+
+#-------------- DEPLOY TO PROD (SERVER only, US) ----------------#
+  deploy-on-prod:
+    if: ${{  inputs.service_type == 'server' && github.ref_name == 'main' && inputs.build_version == '' && github.event_name == 'release' && github.event.action == 'published' }}
+    runs-on: ${{ inputs.image }}
+    name: "[US] Deploy on PROD"
+    steps:
+      - uses: actions/checkout@v3  
+      
+      - name: Get last commit message
+        id: get_commit
+        continue-on-error: true
+        run: |
+          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+          echo $COMMIT_MESSAGE
+          echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
+          
+      - name: Configure SSH
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.SSH_KEY_FOR_DEPLOY }}
+          
+      # - name: Check dump all context
+      #   uses: crazy-max/ghaction-dump-context@v2
+
+      - name: Get release version
+        id: get_version
+        run: |
+          if [ -z "${{ inputs.build_version }}" ]; then
+            VERSION="${{ inputs.release_version }}"
+          else
+            VERSION="${{ inputs.build_version }}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Using version: $VERSION"
+
+      #--------------  [US] DEPLOY TO PROD microservices ----------------#
+      - name: PROD-US - Deploy microservices
+        if: ${{ github.ref_name == 'main' && inputs.service_type == 'server' && inputs.build_version == '' && github.event_name == 'release' && github.event.action == 'published' }}
+
+
+        id: deploy_server_us
+        run: |
+          set -euo pipefail
+          echo "DEPLOY_ENV=PROD" >> $GITHUB_ENV
+          echo "SERVICE_TYPE=server" >> $GITHUB_ENV
+          echo "DEPLOY_LOCATION=US" >> $GITHUB_ENV
+
+          CURRENT_VERSION=$(ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_US_01 }} << 'EOF'
+            cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }} || { echo "Directory not found"; exit 1; }
+            grep -Po "(?<=${{ inputs.repository_name }}:)[0-9].*" *.*ml || echo "unknown"
+          EOF
+          )
+          CURRENT_VERSION=$(echo "$CURRENT_VERSION" | grep -Eo '[0-9].*' | tail -n 1)
+          if [[ -z "$CURRENT_VERSION" ]]; then
+            echo "Error: Unable to extract current version"
+            exit 1
+          else
+            echo "Extracted version: $CURRENT_VERSION"
+          fi
+          echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
+          
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_US_01 }} << 'EOF'
+            set -euo pipefail
+            echo "------------ Starting deployment... ------------"
+            cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
+
+            # Определяем текущий образ
+            OLD_IMAGE=$(grep -Po "(myproptrading|ghcr.io/my-prop-trading)/${{ inputs.repository_name }}:[0-9].*" *.*ml | tail -n 1)
+            if [[ -z "$OLD_IMAGE" ]]; then
+              echo "Error: unable to find current image"
+              exit 1
+            fi
+            echo "Old image: $OLD_IMAGE"
+
+            # Формируем новый образ
+            if [[ "$OLD_IMAGE" == myproptrading/* ]]; then
+              NEW_IMAGE="ghcr.io/my-prop-trading/${{ inputs.repository_name }}:${{ env.VERSION }}"
+            else
+              NEW_IMAGE=$(echo "$OLD_IMAGE" | sed -r "s/:.*$/:${{ env.VERSION }}/")
+            fi
+            echo "New image: $NEW_IMAGE"
+
+            # Обновляем образ во всех *.*ml файлах
+            find . -type f -name "*.*ml" -exec sed -i -r "s|$OLD_IMAGE|$NEW_IMAGE|g" {} \;
+
+            docker pull "$NEW_IMAGE"
+            docker-compose up -d
+            echo "------------ Finished deployment ! ------------"
+          EOF
+
+
+      - name: Send deploy notification
+        if: ${{ always() && steps.deploy_server_us.outcome != '' }}
+        run: |
+          set -euo pipefail
+          status="${{ steps.deploy_server_us.outcome }}"
+          user="Launched deploy by: ${{ github.actor }}"
+          reason="Last commit: ${{ env.COMMIT_MESSAGE }}"
+          date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
+          pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          meta="Type: server\nLocation: US"
+          version_info="US: ${CURRENT_VERSION:-unknown} ---> ${{ env.VERSION }}"
+          curl --request POST --header "Content-Type: application/json" \
+            --data "{\"text\":\"[PROD] Deploy result: ${status}\n\nService: ${{ inputs.repository_name }}\n${meta}\n\n${version_info}\n\n${user}\n${reason}\n${date}\n\nAction URL:\n$pipeline_url\"}" \
+            "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
+
+
+
+
+
+  #-------------- DEPLOY API TO PROD (matrix US, SG) ----------------#
+  deploy-api-on-prod:
+    needs: [ build-csharp, build-rust ]
+    if: ${{ github.ref_name == 'main' && inputs.service_type == 'api' && inputs.build_version == '' && github.event_name == 'release' && github.event.action == 'published' }}
+    runs-on: ${{ inputs.image }}
+    name: "Deploy API on PROD (${{ matrix.location }})"
+
+    strategy:
+      # US как gate: если US упал — SG не запускаем
+      fail-fast: true
+      max-parallel: 1
+      matrix:
+        location: [US, SG]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Get last commit message
+        id: get_commit
+        continue-on-error: true
+        run: |
+          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+          echo $COMMIT_MESSAGE
+          echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
+
+      - name: Get release version
+        id: get_version
+        run: |
+          if [ -z "${{ inputs.build_version }}" ]; then
+            VERSION="${{ inputs.release_version }}"
+          else
+            VERSION="${{ inputs.build_version }}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Using version: $VERSION"
+
+      - name: Resolve location + SSH target
+        run: |
+          echo "DEPLOY_ENV=PROD" >> $GITHUB_ENV
+          echo "SERVICE_TYPE=api" >> $GITHUB_ENV
+          echo "DEPLOY_LOCATION=${{ matrix.location }}" >> $GITHUB_ENV
+
+          case "${{ matrix.location }}" in
+            US)
+              echo "SSH_TARGET=${{ secrets.SSH_ACCESS_US_01 }}" >> $GITHUB_ENV
+              ;;
+            SG)
+              echo "SSH_TARGET=${{ secrets.SSH_ACCESS_SG_01 }}" >> $GITHUB_ENV
+              ;;
+            *)
+              echo "Unknown location: ${{ matrix.location }}"
+              exit 1
+              ;;
+          esac
+
+      - name: Configure SSH
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.SSH_KEY_FOR_DEPLOY }}
+
+      - name: Deploy API services (${{ matrix.location }})
+        id: deploy_api
+        run: |
+          set -euo pipefail
+
+          CURRENT_VERSION=$(ssh -o StrictHostKeyChecking=no "$SSH_TARGET" << 'EOF'
+            cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }} || { echo "Directory not found"; exit 1; }
+            grep -Po "(?<=${{ inputs.repository_name }}:)[0-9].*" *.*ml || echo "unknown"
+            EOF
+          )
+
+          CURRENT_VERSION=$(echo "$CURRENT_VERSION" | grep -Eo '[0-9].*' | tail -n 1)
+          if [[ -z "$CURRENT_VERSION" ]]; then
+            echo "Error: Unable to extract current version"
+            exit 1
+          fi
+
+          echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
+
+          ssh -o StrictHostKeyChecking=no "$SSH_TARGET" << 'EOF'
+            set -euo pipefail
+            echo "------------ Starting API deployment (${{ matrix.location }})... ------------"
+            cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
+
+            OLD_IMAGE=$(grep -Po "(myproptrading|ghcr.io/my-prop-trading)/${{ inputs.repository_name }}:[0-9].*" *.*ml | tail -n 1)
+            if [[ -z "$OLD_IMAGE" ]]; then
+              echo "Error: unable to find current image"
+              exit 1
+            fi
+
+            if [[ "$OLD_IMAGE" == myproptrading/* ]]; then
+              NEW_IMAGE="ghcr.io/my-prop-trading/${{ inputs.repository_name }}:${{ env.VERSION }}"
+            else
+              NEW_IMAGE=$(echo "$OLD_IMAGE" | sed -r "s/:.*$/:${{ env.VERSION }}/")
+            fi
+
+            find . -type f -name "*.*ml" -exec sed -i -r "s|$OLD_IMAGE|$NEW_IMAGE|g" {} \;
+
+            docker pull "$NEW_IMAGE"
+            docker-compose up -d
+
+            echo "------------ Finished API deployment (${{ matrix.location }})! ------------"
+          EOF
+
+      - name: Notify API deploy (${{ matrix.location }})
+        if: ${{ always() && steps.deploy_api.outcome != '' }}
+        run: |
+          set -euo pipefail
+          status="${{ steps.deploy_api.outcome }}"
+
+          user="Launched deploy by: ${{ github.actor }}"
+          reason="Last commit: ${{ env.COMMIT_MESSAGE }}"
+          date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
+          pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          meta="Type: api\nLocation: ${{ matrix.location }}"
+          version_info="${{ matrix.location }}: ${CURRENT_VERSION:-unknown} ---> ${{ env.VERSION }}"
+
+          curl --request POST --header "Content-Type: application/json" \
+            --data "{\"text\":\"[PROD] Deploy result: ${status}\n\nService: ${{ inputs.repository_name }}\n${meta}\n\n${version_info}\n\n${user}\n${reason}\n${date}\n\nAction URL:\n$pipeline_url\"}" \
+            "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
+
+
+#-------------- Send ERROR notification ----------------#
+  notify-telegram-error:
+    needs: [test-rust, test-csharp, build-rust, build-csharp, deploy-on-alpha, deploy-on-prod, deploy-api-on-prod]
+    runs-on: ${{ inputs.image }}
+    name: "Send ERROR notification"
+    if: failure()
+    steps:
+      - uses: actions/checkout@v3  
+      
+      - name: Get last commit message
+        id: get_commit
+        continue-on-error: true
+        run: |
+          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+          echo $COMMIT_MESSAGE
+          echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
+
+      - name: Send error notification
+        run: |
+          user="Triggered by: ${{ github.actor }}"
+          reason="Last commit: ${{ env.COMMIT_MESSAGE }}"
+          date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
+          pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        
+          needs_json='${{ toJSON(needs) }}'
+          failed_jobs=()
+          
+          while IFS= read -r job; do
+            failed_jobs+=("$job")
+          done < <(echo "$needs_json" | jq -r 'to_entries[] | select(.value.result == "failure") | .key')
+          
+          if [[ ${#failed_jobs[@]} -gt 0 ]]; then
+            job_names=$(IFS=, ; echo "${failed_jobs[*]}")
+            echo "Failed job names: $job_names"
+    
+            curl --request POST --header "Content-Type: application/json" \
+              --data "{\"text\":\"[ERROR] GitHub Action Info:\n\n Failed >>>   $job_names\n Project: ${{ inputs.repository_name }}\n\n $user\n $reason\n $date\n\n Please check action here:\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+              "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
+          else
+            echo "No jobs failed."
+          fi
+
+ #--------------------------------------------------------------------------------------------------#   
