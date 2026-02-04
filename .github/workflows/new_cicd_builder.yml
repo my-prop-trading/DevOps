@@ -435,8 +435,7 @@ jobs:
       
           Environment: ${deploy_env}
           Service: ${service}
-          Version: ${version_old} → ${version_new}
-          ${extra:+\n$extra}
+          Version: ${version_old} → ${version_new}${extra:+$'\n'"$extra"}
           
           By: ${user}
           Commit: ${reason}
