@@ -386,26 +386,68 @@ jobs:
           EOF
 
           
-      - name: Send deploy notification
-        run: |
-          user="Launched deploy by: ${{ github.actor }}"
-          reason="Last commit: ${COMMIT_MESSAGE//\"/\\\"}"
-          version_info="Version: ${{ env.CURRENT_VERSION }} ---> ${{ env.VERSION }}"
-          date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
-          pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      # - name: Send deploy notification
+      #   run: |
+      #     user="Launched deploy by: ${{ github.actor }}"
+      #     reason="Last commit: ${COMMIT_MESSAGE//\"/\\\"}"
+      #     version_info="Version: ${{ env.CURRENT_VERSION }} ---> ${{ env.VERSION }}"
+      #     date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
+      #     pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-          IFS='.' read -r CURRENT_MAJOR CURRENT_MINOR CURRENT_PATCH <<< "${{ env.CURRENT_VERSION }}"
-          IFS='.' read -r NEW_MAJOR NEW_MINOR NEW_PATCH <<< "${{ env.VERSION }}"
+      #     IFS='.' read -r CURRENT_MAJOR CURRENT_MINOR CURRENT_PATCH <<< "${{ env.CURRENT_VERSION }}"
+      #     IFS='.' read -r NEW_MAJOR NEW_MINOR NEW_PATCH <<< "${{ env.VERSION }}"
           
-          if [[ "$CURRENT_MAJOR" -ne "$NEW_MAJOR" || "$CURRENT_MINOR" -ne "$NEW_MINOR" ]]; then
-            extra_message="!!! Attention: Major version change detected! Please check settings or DataBase configuration !!!"
-          else
-            extra_message=""
-          fi
+      #     if [[ "$CURRENT_MAJOR" -ne "$NEW_MAJOR" || "$CURRENT_MINOR" -ne "$NEW_MINOR" ]]; then
+      #       extra_message="!!! Attention: Major version change detected! Please check settings or DataBase configuration !!!"
+      #     else
+      #       extra_message=""
+      #     fi
 
+      #     curl --request POST --header "Content-Type: application/json" \
+      #       --data "{\"text\":\"[${{ env.DEPLOY_ENV }}] GitHub Deploy Info:\n\n Service: ${{ inputs.repository_name }}\n $version_info\n\n $extra_message\n\n $user\n $reason\n $date\n\n Action URL:\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+      #       "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
+
+      - name: Send deploy notification
+        shell: bash
+        run: |
+          set -euo pipefail
+      
+          deploy_env="${{ env.DEPLOY_ENV }}"
+          service="${{ inputs.repository_name }}"
+          version_old="${{ env.CURRENT_VERSION }}"
+          version_new="${{ env.VERSION }}"
+          user="${{ github.actor }}"
+          reason="${{ env.COMMIT_MESSAGE }}"
+          date="$(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
+          url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      
+          # Major/minor change warning
+          extra=""
+          if [[ "$version_old" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ && "$version_new" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            IFS='.' read -r CURRENT_MAJOR CURRENT_MINOR _ <<< "$version_old"
+            IFS='.' read -r NEW_MAJOR NEW_MINOR _ <<< "$version_new"
+            if [[ "$CURRENT_MAJOR" -ne "$NEW_MAJOR" || "$CURRENT_MINOR" -ne "$NEW_MINOR" ]]; then
+              extra="⚠️ Major/Minor version change — check config / DB migrations"
+            fi
+          fi
+      
+          msg="🚀 Deploy completed
+      
+          Environment: ${deploy_env}
+          Service: ${service}
+          Version: ${version_old} → ${version_new}
+          ${extra:+\n$extra}
+          
+          By: ${user}
+          Commit: ${reason}
+          Time: ${date}
+          
+          Run: ${url}"
+      
           curl --request POST --header "Content-Type: application/json" \
-            --data "{\"text\":\"[${{ env.DEPLOY_ENV }}] GitHub Deploy Info:\n\n Service: ${{ inputs.repository_name }}\n $version_info\n\n $extra_message\n\n $user\n $reason\n $date\n\n Action URL:\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
-            "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
+            --data "$(jq -n --arg chat_id "${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}" --arg text "$msg" '{chat_id:$chat_id, text:$text}')" \
+            "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage"
+
 
 
 #-------------- DEPLOY TO PROD (SERVER only, US) ----------------#
@@ -497,20 +539,69 @@ jobs:
           EOF
 
 
+      # - name: Send deploy notification
+      #   if: ${{ always() && steps.deploy_server_us.outcome != '' }}
+      #   run: |
+      #     set -euo pipefail
+      #     status="${{ steps.deploy_server_us.outcome }}"
+      #     user="Launched deploy by: ${{ github.actor }}"
+      #     reason="Last commit: ${{ env.COMMIT_MESSAGE }}"
+      #     date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
+      #     pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      #     meta="Type: server\nLocation: US"
+      #     version_info="US: ${CURRENT_VERSION:-unknown} ---> ${{ env.VERSION }}"
+      #     curl --request POST --header "Content-Type: application/json" \
+      #       --data "{\"text\":\"[PROD] Deploy result: ${status}\n\nService: ${{ inputs.repository_name }}\n${meta}\n\n${version_info}\n\n${user}\n${reason}\n${date}\n\nAction URL:\n$pipeline_url\"}" \
+      #       "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_RELEASE_CHAT_ID }}"
+
       - name: Send deploy notification
         if: ${{ always() && steps.deploy_server_us.outcome != '' }}
+        shell: bash
         run: |
           set -euo pipefail
+      
           status="${{ steps.deploy_server_us.outcome }}"
-          user="Launched deploy by: ${{ github.actor }}"
-          reason="Last commit: ${{ env.COMMIT_MESSAGE }}"
-          date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
-          pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          meta="Type: server\nLocation: US"
-          version_info="US: ${CURRENT_VERSION:-unknown} ---> ${{ env.VERSION }}"
+          service="${{ inputs.repository_name }}"
+          location="US"
+          type="server"
+          version_new="${{ env.VERSION }}"
+          version_old="${CURRENT_VERSION:-unknown}"
+      
+          user="${{ github.actor }}"
+          reason="${{ env.COMMIT_MESSAGE }}"
+          date="$(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
+          url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      
+          if [[ "$status" == "success" ]]; then
+            icon="✅"
+            title="Deploy SUCCESS"
+          elif [[ "$status" == "failure" ]]; then
+            icon="❌"
+            title="Deploy FAILED"
+          else
+            icon="⚠️"
+            title="Deploy ${status}"
+          fi
+      
+          msg="$icon $title
+      
+          Environment: PROD
+          Service: ${service}
+          Type: ${type}
+          Location: ${location}
+          
+          Version: ${version_old} → ${version_new}
+          
+          By: ${user}
+          Commit: ${reason}
+          Time: ${date}
+          
+          Run: ${url}"
+      
           curl --request POST --header "Content-Type: application/json" \
-            --data "{\"text\":\"[PROD] Deploy result: ${status}\n\nService: ${{ inputs.repository_name }}\n${meta}\n\n${version_info}\n\n${user}\n${reason}\n${date}\n\nAction URL:\n$pipeline_url\"}" \
-            "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_RELEASE_CHAT_ID }}"
+            --data "$(jq -n --arg chat_id "${{ secrets.TELEGRAM_RELEASE_CHAT_ID }}" --arg text "$msg" '{chat_id:$chat_id, text:$text}')" \
+            "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage"
+      
 
 
   #-------------- DEPLOY API TO PROD (matrix US, SG) ----------------#
@@ -718,29 +809,64 @@ jobs:
           echo $COMMIT_MESSAGE
           echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
 
-      - name: Send error notification
-        run: |
-          user="Triggered by: ${{ github.actor }}"
-          reason="Last commit: ${{ env.COMMIT_MESSAGE }}"
-          date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
-          pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      # - name: Send error notification
+      #   run: |
+      #     user="Triggered by: ${{ github.actor }}"
+      #     reason="Last commit: ${{ env.COMMIT_MESSAGE }}"
+      #     date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
+      #     pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         
-          needs_json='${{ toJSON(needs) }}'
-          failed_jobs=()
+      #     needs_json='${{ toJSON(needs) }}'
+      #     failed_jobs=()
           
-          while IFS= read -r job; do
-            failed_jobs+=("$job")
-          done < <(echo "$needs_json" | jq -r 'to_entries[] | select(.value.result == "failure") | .key')
+      #     while IFS= read -r job; do
+      #       failed_jobs+=("$job")
+      #     done < <(echo "$needs_json" | jq -r 'to_entries[] | select(.value.result == "failure") | .key')
           
-          if [[ ${#failed_jobs[@]} -gt 0 ]]; then
-            job_names=$(IFS=, ; echo "${failed_jobs[*]}")
-            echo "Failed job names: $job_names"
+      #     if [[ ${#failed_jobs[@]} -gt 0 ]]; then
+      #       job_names=$(IFS=, ; echo "${failed_jobs[*]}")
+      #       echo "Failed job names: $job_names"
     
-            curl --request POST --header "Content-Type: application/json" \
-              --data "{\"text\":\"[ERROR] GitHub Action Info:\n\n Failed >>>   $job_names\n Project: ${{ inputs.repository_name }}\n\n $user\n $reason\n $date\n\n Please check action here:\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
-              "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
-          else
+      #       curl --request POST --header "Content-Type: application/json" \
+      #         --data "{\"text\":\"[ERROR] GitHub Action Info:\n\n Failed >>>   $job_names\n Project: ${{ inputs.repository_name }}\n\n $user\n $reason\n $date\n\n Please check action here:\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+      #         "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
+      #     else
+      #       echo "No jobs failed."
+      #     fi
+
+      - name: Send error notification
+        shell: bash
+        run: |
+          set -euo pipefail
+      
+          user="${{ github.actor }}"
+          reason="${{ env.COMMIT_MESSAGE }}"
+          date="$(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
+          url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          service="${{ inputs.repository_name }}"
+      
+          needs_json='${{ toJSON(needs) }}'
+      
+          failed_jobs=$(echo "$needs_json" | jq -r 'to_entries[] | select(.value.result == "failure") | .key' | tr '\n' ',' | sed 's/,$//')
+          if [[ -z "$failed_jobs" ]]; then
             echo "No jobs failed."
+            exit 0
           fi
+      
+          msg="❌ Pipeline FAILED
+      
+          Service: ${service}
+          Failed jobs: ${failed_jobs}
+          
+          By: ${user}
+          Commit: ${reason}
+          Time: ${date}
+          
+          Run: ${url}"
+      
+          curl --request POST --header "Content-Type: application/json" \
+            --data "$(jq -n --arg chat_id "${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}" --arg text "$msg" '{chat_id:$chat_id, text:$text}')" \
+            "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage"
+      
 
  #--------------------------------------------------------------------------------------------------#   
