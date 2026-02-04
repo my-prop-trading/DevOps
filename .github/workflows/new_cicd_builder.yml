@@ -431,9 +431,8 @@ jobs:
             fi
           fi
       
-          msg="🚀 Deploy completed
+          msg="🚀 [${deploy_env}] Deploy completed
       
-          Environment: ${deploy_env}
           Service: ${service}
           Version: ${version_old} → ${version_new}${extra:+$'\n'"$extra"}
           
@@ -441,7 +440,7 @@ jobs:
           Commit: ${reason}
           Time: ${date}
           
-          Run: ${url}"
+          Action URL: ${url}"
       
           curl --request POST --header "Content-Type: application/json" \
             --data "$(jq -n --arg chat_id "${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}" --arg text "$msg" '{chat_id:$chat_id, text:$text}')" \
