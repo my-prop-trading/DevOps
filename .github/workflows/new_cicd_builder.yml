@@ -431,7 +431,7 @@ jobs:
             fi
           fi
       
-          msg="🚀 [${deploy_env}] Deploy completed
+          msg="🟢 [${deploy_env}] Deploy completed
       
           Service: ${service}
           Version: ${version_old} → ${version_new}${extra:+$'\n'"$extra"}
@@ -851,7 +851,7 @@ jobs:
             exit 0
           fi
       
-          msg="❌ Pipeline FAILED
+          msg="🔴 Pipeline FAILED
       
           Service: ${service}
           Failed jobs: ${failed_jobs}
