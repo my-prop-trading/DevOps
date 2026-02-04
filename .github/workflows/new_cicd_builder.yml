@@ -438,7 +438,7 @@ jobs:
           
           By: ${user}
           Commit: ${reason}
-          Time: ${date}
+          Date: ${date}
           
           Action URL: ${url}"
       
