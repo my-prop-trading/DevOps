@@ -858,9 +858,9 @@ jobs:
           
           By: ${user}
           Commit: ${reason}
-          Time: ${date}
+          Date: ${date}
           
-          Run: ${url}"
+          Action URL: ${url}"
       
           curl --request POST --header "Content-Type: application/json" \
             --data "$(jq -n --arg chat_id "${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}" --arg text "$msg" '{chat_id:$chat_id, text:$text}')" \
