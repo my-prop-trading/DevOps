@@ -427,7 +427,7 @@ jobs:
             IFS='.' read -r CURRENT_MAJOR CURRENT_MINOR _ <<< "$version_old"
             IFS='.' read -r NEW_MAJOR NEW_MINOR _ <<< "$version_new"
             if [[ "$CURRENT_MAJOR" -ne "$NEW_MAJOR" || "$CURRENT_MINOR" -ne "$NEW_MINOR" ]]; then
-              extra="⚠️ Major/Minor version change — check config / DB migrations"
+              extra="⚠️ Major version change — check Settings/ DB config"
             fi
           fi
       
