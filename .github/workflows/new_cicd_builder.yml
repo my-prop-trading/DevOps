@@ -793,7 +793,7 @@ jobs:
             mkdir -p "$BACKUP_DIR"
             cp -a ./*.*ml "$BACKUP_DIR"/
             
-            find . -type f -name "*.*ml" -exec sed -i -r "s|$OLD_IMAGE|$NEW_IMAGE|g" {} \;
+            find . -maxdepth 1 -type f -name "*.*ml" -exec sed -i -r "s|$OLD_IMAGE|$NEW_IMAGE|g" {} \;
             
             docker pull "$NEW_IMAGE"
             docker-compose up -d
@@ -847,11 +847,14 @@ jobs:
               docker pull "$OLD_IMAGE" >/dev/null 2>&1 || true
               docker-compose up -d
               echo "✅ Rollback completed to: $OLD_IMAGE"
+              rm -rf "$BACKUP_DIR"
               exit 1
             fi
             
             echo "__ROLLBACK_TRIGGERED__=0"
             echo "✅ Deploy looks OK."
+            echo "Cleaning backup dir: $BACKUP_DIR"
+            rm -rf "$BACKUP_DIR"
             echo "------------ Finished API deployment (${{ matrix.location }})! ------------"
           EOF
           )" || true
