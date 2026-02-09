@@ -770,7 +770,7 @@ jobs:
             
             SERVICE_NAME="${{ inputs.repository_name }}"
             WAIT_SEC=15
-            TAIL_LINES=120
+            TAIL_LINES=10
             MAX_RESTARTS=1
             
             echo "------------ Starting API deployment (${{ matrix.location }})... ------------"
@@ -792,6 +792,8 @@ jobs:
             BACKUP_DIR=".rollback_backup_$(date +%Y%m%d_%H%M%S)"
             mkdir -p "$BACKUP_DIR"
             cp -a ./*.*ml "$BACKUP_DIR"/
+            ls -la
+            ls -la "$BACKUP_DIR"
             
             find . -type f -name "*.*ml" -exec sed -i -r "s|$OLD_IMAGE|$NEW_IMAGE|g" {} \;
             
@@ -809,8 +811,15 @@ jobs:
               echo "Could not resolve container id for service: $SERVICE_NAME"
               echo "__LOG_TAIL_END__"
               echo "Rolling back (restore compose files) ..."
+              ls -la
+              cat *.*ml
+              ls -la "$BACKUP_DIR"
+              cat "$BACKUP_DIR"/*.*ml
+              
               cp -a "$BACKUP_DIR"/*.*ml ./
               docker-compose up -d
+              ls -la
+              cat *.*ml
               exit 1
             fi
             
@@ -832,15 +841,15 @@ jobs:
             fi
             
             if [[ "$BAD" -eq 1 ]]; then
-              echo "__ROLLBACK_TRIGGERED__=1"
-              echo "__CONTAINER_ID__=$CID"
-              echo "__STATE__=$STATE"
-              echo "__RESTARTS__=$RESTARTS"
-              echo "__HEALTH__=$HEALTH"
+              echo " ---> ROLLBACK_TRIGGERED=1"
+              echo " ---> CONTAINER_ID=$CID"
+              echo " ---> STATE=$STATE"
+              echo " ---> RESTARTS=$RESTARTS"
+              echo " ---> HEALTH=$HEALTH"
             
-              echo "__LOG_TAIL_BEGIN__"
+              echo "LOG_TAIL_BEGIN  ------------> "
               docker logs --tail "$TAIL_LINES" "$CID" 2>&1 || true
-              echo "__LOG_TAIL_END__"
+              echo "<------------ LOG_TAIL_END"
             
               echo "❌ Bad container state detected. Rolling back to OLD image via compose files..."
               
