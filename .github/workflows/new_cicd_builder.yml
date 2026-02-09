@@ -601,7 +601,7 @@ jobs:
   
           # Extract log tail from markers (if present)
           LOG_TAIL="$(echo "$DEPLOY_OUT" | awk '/__LOG_TAIL_BEGIN__/{flag=1;next} /__LOG_TAIL_END__/{flag=0} flag')"
-          LOG_TAIL="$(printf "%s" "$LOG_TAIL" | tail -n 120)"
+          LOG_TAIL="$(printf "%s" "$LOG_TAIL" | tail -n 10)"
           LOG_TAIL="${LOG_TAIL:0:2500}"
   
           {
@@ -842,12 +842,14 @@ jobs:
               docker logs --tail "$TAIL_LINES" "$CID" 2>&1 || true
               echo "__LOG_TAIL_END__"
             
-              echo "❌ Bad container state detected. Rolling back to old image..."
+              echo "❌ Bad container state detected. Rolling back to OLD image via compose files..."
+              
               cp -a "$BACKUP_DIR"/*.*ml ./
-              docker pull "$OLD_IMAGE" >/dev/null 2>&1 || true
+              docker-compose pull || true
               docker-compose up -d
-              echo "✅ Rollback completed to: $OLD_IMAGE"
+              echo "✅ Rollback completed (compose restored)."
               exit 1
+
             fi
             
             echo "__ROLLBACK_TRIGGERED__=0"
