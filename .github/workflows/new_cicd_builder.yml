@@ -213,7 +213,6 @@ jobs:
           
   #-------------- BUILD C# ----------------#
   build-csharp:
-    # if: ${{ (inputs.language == 'csharp' && github.event_name == 'release' && github.event.action == 'published') || (inputs.language == 'csharp' && inputs.build_version != '' && github.ref_name != 'main') }}
     if: ${{ inputs.language == 'csharp' && github.event_name != 'release' && github.event.action != 'published' && inputs.build_version != '' && github.ref_name != 'main' }}
     runs-on: ${{ inputs.image }}
     name: "[C#] Build code"
@@ -468,6 +467,9 @@ jobs:
         uses: webfactory/ssh-agent@v0.5.3
         with:
           ssh-private-key: ${{ secrets.SSH_KEY_FOR_DEPLOY }}
+
+      # - name: Check dump all context
+      #   uses: crazy-max/ghaction-dump-context@v2
   
       - name: Get release version
         id: get_version
@@ -511,7 +513,7 @@ jobs:
             
             SERVICE_NAME="${{ inputs.repository_name }}"
             WAIT_SEC=15
-            TAIL_LINES=120
+            TAIL_LINES=10
             MAX_RESTARTS=1
             
             echo "------------ Starting deployment... ------------"
@@ -534,7 +536,7 @@ jobs:
             mkdir -p "$BACKUP_DIR"
             cp -a ./*.*ml "$BACKUP_DIR"/
             
-            find . -type f -name "*.*ml" -exec sed -i -r "s|$OLD_IMAGE|$NEW_IMAGE|g" {} \;
+            find . -maxdepth 1 -type f -name "*.*ml" -exec sed -i -r "s|$OLD_IMAGE|$NEW_IMAGE|g" {} \;
             
             docker pull "$NEW_IMAGE"
             docker-compose up -d
@@ -587,6 +589,7 @@ jobs:
               cp -a "$BACKUP_DIR"/*.*ml ./
               docker pull "$OLD_IMAGE" >/dev/null 2>&1 || true
               docker-compose up -d
+              rm -rf "$BACKUP_DIR"
               echo "✅ Rollback completed to: $OLD_IMAGE"
               exit 1
             fi
@@ -615,7 +618,7 @@ jobs:
             exit 1
           fi
   
-      - name: Send deploy notification
+      - name: Notify services deploy
         if: ${{ always() && steps.deploy_server_us.outcome != '' }}
         shell: bash
         run: |
@@ -699,6 +702,7 @@ jobs:
     name: "[${{ matrix.location }}] Deploy API on PROD"
   
     strategy:
+      # US как gate: если US упал — SG не запускаем
       fail-fast: true
       max-parallel: 1
       matrix:
@@ -744,7 +748,10 @@ jobs:
         uses: webfactory/ssh-agent@v0.5.3
         with:
           ssh-private-key: ${{ secrets.SSH_KEY_FOR_DEPLOY }}
-  
+
+      # - name: Check dump all context
+      #   uses: crazy-max/ghaction-dump-context@v2
+
       - name: Deploy API services (${{ matrix.location }}) with rollback + log tail
         id: deploy_api
         shell: bash
@@ -763,7 +770,8 @@ jobs:
             exit 1
           fi
           echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
-  
+
+          # Remote deploy with rollback checks; always capture output
           DEPLOY_OUT="$(ssh -o StrictHostKeyChecking=no "$SSH_TARGET" <<'EOF'
             set -euo pipefail
             cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
@@ -904,7 +912,8 @@ jobs:
             icon="⚠️"
             title="RELEASE Deploy ${status}"
           fi
-  
+
+          # MarkdownV2 escape helper
           esc() { sed -e 's/\\/\\\\/g' -e 's/\./\\./g' -e 's/\-/\\-/g' -e 's/(/\\(/g' -e 's/)/\\)/g' -e 's/\[/\\[/g' -e 's/\]/\\]/g' -e 's/_/\\_/g' -e 's/\*/\\*/g' -e 's/`/\\`/g' -e 's/>/\\>/g' -e 's/#/\\#/g' -e 's/+/\\+/g' -e 's/=/\\=/g' -e 's/|/\\|/g' -e 's/{/\\{/g' -e 's/}/\\}/g' -e 's/!/\\!/g'; }
   
           title_e="$(printf "%s" "$title" | esc)"
