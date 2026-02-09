@@ -447,31 +447,28 @@ jobs:
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage"
 
 
-
-#-------------- DEPLOY TO PROD (SERVER only, US) ----------------#
+  
+  #-------------- DEPLOY TO PROD (SERVER only, US) ----------------#
   deploy-on-prod:
-    if: ${{  inputs.service_type == 'server' && inputs.service_type != 'api' && github.ref_name == 'main' && inputs.build_version == '' && github.event_name == 'release' && github.event.action == 'published' }}
+    if: ${{ inputs.service_type == 'server' && github.event_name == 'release' && github.event.action == 'published' && github.event.release.target_commitish == 'main' && (inputs.build_version == '' || inputs.build_version == null) }}
     runs-on: ${{ inputs.image }}
     name: "[US] Deploy on PROD"
     steps:
-      - uses: actions/checkout@v3  
-      
+      - uses: actions/checkout@v3
+  
       - name: Get last commit message
         id: get_commit
         continue-on-error: true
         run: |
           COMMIT_MESSAGE=$(git log -1 --pretty=%B)
-          echo $COMMIT_MESSAGE
+          echo "$COMMIT_MESSAGE"
           echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
-          
+  
       - name: Configure SSH
         uses: webfactory/ssh-agent@v0.5.3
         with:
           ssh-private-key: ${{ secrets.SSH_KEY_FOR_DEPLOY }}
-          
-      # - name: Check dump all context
-      #   uses: crazy-max/ghaction-dump-context@v2
-
+  
       - name: Get release version
         id: get_version
         run: |
@@ -482,17 +479,18 @@ jobs:
           fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Using version: $VERSION"
-
-      - name: Deploy microservices
-        # if: ${{ github.ref_name == 'main' && inputs.service_type == 'server' && inputs.build_version == '' && github.event_name == 'release' && github.event.action == 'published' }}
+  
+      - name: Deploy microservices (US) with rollback + log tail
         id: deploy_server_us
+        shell: bash
         run: |
           set -euo pipefail
           echo "DEPLOY_ENV=PROD" >> $GITHUB_ENV
           echo "SERVICE_TYPE=server" >> $GITHUB_ENV
           echo "DEPLOY_LOCATION=US" >> $GITHUB_ENV
-
-          CURRENT_VERSION=$(ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_US_01 }} << 'EOF'
+  
+          # Get CURRENT_VERSION from server (for notification)
+          CURRENT_VERSION=$(ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_US_01 }} <<'EOF'
             cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }} || { echo "Directory not found"; exit 1; }
             grep -Po "(?<=${{ inputs.repository_name }}:)[0-9].*" *.*ml || echo "unknown"
           EOF
@@ -505,128 +503,218 @@ jobs:
             echo "Extracted version: $CURRENT_VERSION"
           fi
           echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
-          
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_US_01 }} << 'EOF'
+  
+          # Remote deploy with rollback checks; always capture output
+          DEPLOY_OUT="$(ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_US_01 }} <<'EOF'
             set -euo pipefail
-            echo "------------ Starting deployment... ------------"
             cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
-
-            # Определяем текущий образ
+            
+            SERVICE_NAME="${{ inputs.repository_name }}"
+            WAIT_SEC=15
+            TAIL_LINES=120
+            MAX_RESTARTS=1
+            
+            echo "------------ Starting deployment... ------------"
+            
             OLD_IMAGE=$(grep -Po "(myproptrading|ghcr.io/my-prop-trading)/${{ inputs.repository_name }}:[0-9].*" *.*ml | tail -n 1)
             if [[ -z "$OLD_IMAGE" ]]; then
               echo "Error: unable to find current image"
               exit 1
             fi
             echo "Old image: $OLD_IMAGE"
-
-            # Формируем новый образ
+            
             if [[ "$OLD_IMAGE" == myproptrading/* ]]; then
               NEW_IMAGE="ghcr.io/my-prop-trading/${{ inputs.repository_name }}:${{ env.VERSION }}"
             else
               NEW_IMAGE=$(echo "$OLD_IMAGE" | sed -r "s/:.*$/:${{ env.VERSION }}/")
             fi
             echo "New image: $NEW_IMAGE"
-
-            # Обновляем образ во всех *.*ml файлах
+            
+            BACKUP_DIR=".rollback_backup_$(date +%Y%m%d_%H%M%S)"
+            mkdir -p "$BACKUP_DIR"
+            cp -a ./*.*ml "$BACKUP_DIR"/
+            
             find . -type f -name "*.*ml" -exec sed -i -r "s|$OLD_IMAGE|$NEW_IMAGE|g" {} \;
-
+            
             docker pull "$NEW_IMAGE"
             docker-compose up -d
+            
+            echo "Waiting ${WAIT_SEC}s for container to stabilize..."
+            sleep "$WAIT_SEC"
+            
+            CID="$(docker-compose ps -q "$SERVICE_NAME" || true)"
+            if [[ -z "$CID" ]]; then
+              echo "__ROLLBACK_TRIGGERED__=1"
+              echo "__REASON__=container_id_not_found"
+              echo "__LOG_TAIL_BEGIN__"
+              echo "Could not resolve container id for service: $SERVICE_NAME"
+              echo "__LOG_TAIL_END__"
+              echo "Rolling back (restore compose files) ..."
+              cp -a "$BACKUP_DIR"/*.*ml ./
+              docker-compose up -d
+              exit 1
+            fi
+            
+            STATE="$(docker inspect -f '{{.State.Status}}' "$CID" 2>/dev/null || echo unknown)"
+            RESTARTS="$(docker inspect -f '{{.RestartCount}}' "$CID" 2>/dev/null || echo 0)"
+            HEALTH="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$CID" 2>/dev/null || echo none)"
+            
+            echo "Post-deploy check: service=$SERVICE_NAME cid=$CID state=$STATE restarts=$RESTARTS health=$HEALTH"
+            
+            BAD=0
+            if [[ "$STATE" == "restarting" || "$STATE" == "exited" || "$STATE" == "dead" ]]; then
+              BAD=1
+            fi
+            if [[ "$HEALTH" == "unhealthy" ]]; then
+              BAD=1
+            fi
+            if [[ "$STATE" != "running" && "$RESTARTS" -ge "$MAX_RESTARTS" ]]; then
+              BAD=1
+            fi
+            
+            if [[ "$BAD" -eq 1 ]]; then
+              echo "__ROLLBACK_TRIGGERED__=1"
+              echo "__CONTAINER_ID__=$CID"
+              echo "__STATE__=$STATE"
+              echo "__RESTARTS__=$RESTARTS"
+              echo "__HEALTH__=$HEALTH"
+            
+              echo "__LOG_TAIL_BEGIN__"
+              docker logs --tail "$TAIL_LINES" "$CID" 2>&1 || true
+              echo "__LOG_TAIL_END__"
+            
+              echo "❌ Bad container state detected. Rolling back to old image..."
+              cp -a "$BACKUP_DIR"/*.*ml ./
+              docker pull "$OLD_IMAGE" >/dev/null 2>&1 || true
+              docker-compose up -d
+              echo "✅ Rollback completed to: $OLD_IMAGE"
+              exit 1
+            fi
+            
+            echo "__ROLLBACK_TRIGGERED__=0"
+            echo "✅ Deploy looks OK."
             echo "------------ Finished deployment ! ------------"
           EOF
-
-
-      # - name: Send deploy notification
-      #   if: ${{ always() && steps.deploy_server_us.outcome != '' }}
-      #   run: |
-      #     set -euo pipefail
-      #     status="${{ steps.deploy_server_us.outcome }}"
-      #     user="Launched deploy by: ${{ github.actor }}"
-      #     reason="Last commit: ${{ env.COMMIT_MESSAGE }}"
-      #     date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
-      #     pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-      #     meta="Type: server\nLocation: US"
-      #     version_info="US: ${CURRENT_VERSION:-unknown} ---> ${{ env.VERSION }}"
-      #     curl --request POST --header "Content-Type: application/json" \
-      #       --data "{\"text\":\"[PROD] Deploy result: ${status}\n\nService: ${{ inputs.repository_name }}\n${meta}\n\n${version_info}\n\n${user}\n${reason}\n${date}\n\nAction URL:\n$pipeline_url\"}" \
-      #       "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_RELEASE_CHAT_ID }}"
-
+          )" || true
+  
+          echo "$DEPLOY_OUT"
+  
+          # Extract log tail from markers (if present)
+          LOG_TAIL="$(echo "$DEPLOY_OUT" | awk '/__LOG_TAIL_BEGIN__/{flag=1;next} /__LOG_TAIL_END__/{flag=0} flag')"
+          LOG_TAIL="$(printf "%s" "$LOG_TAIL" | tail -n 120)"
+          LOG_TAIL="${LOG_TAIL:0:2500}"
+  
+          {
+            echo "deploy_log_tail<<EOF"
+            echo "$LOG_TAIL"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+  
+          # Fail the step if rollback happened
+          if echo "$DEPLOY_OUT" | grep -q "__ROLLBACK_TRIGGERED__=1"; then
+            exit 1
+          fi
+  
       - name: Send deploy notification
         if: ${{ always() && steps.deploy_server_us.outcome != '' }}
         shell: bash
         run: |
           set -euo pipefail
-      
+  
           status="${{ steps.deploy_server_us.outcome }}"
+          log_tail="${{ steps.deploy_server_us.outputs.deploy_log_tail }}"
+  
           service="${{ inputs.repository_name }}"
-          location="US"
-          type="server"
           version_new="${{ env.VERSION }}"
-          version_old="${CURRENT_VERSION:-unknown}"
-      
+          version_old="${{ env.CURRENT_VERSION }}"
+  
           user="${{ github.actor }}"
           reason="${{ env.COMMIT_MESSAGE }}"
           date="$(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
           url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-      
+  
           if [[ "$status" == "success" ]]; then
             icon="✅"
-            title="Deploy SUCCESS"
+            title="RELEASE Deploy Successful"
           elif [[ "$status" == "failure" ]]; then
             icon="❌"
-            title="Deploy FAILED"
+            title="RELEASE Deploy FAILED (rolled back)"
           else
             icon="⚠️"
-            title="Deploy ${status}"
+            title="RELEASE Deploy ${status}"
           fi
-      
-          msg="$icon $title
-      
-          Environment: PROD
-          Service: ${service}
-          Type: ${type}
-          Location: ${location}
-          
-          Version: ${version_old} → ${version_new}
-          
-          By: ${user}
-          Commit: ${reason}
-          Time: ${date}
-          
-          Run: ${url}"
-      
+  
+          # MarkdownV2 escape helper
+          esc() { sed -e 's/\\/\\\\/g' -e 's/\./\\./g' -e 's/\-/\\-/g' -e 's/(/\\(/g' -e 's/)/\\)/g' -e 's/\[/\\[/g' -e 's/\]/\\]/g' -e 's/_/\\_/g' -e 's/\*/\\*/g' -e 's/`/\\`/g' -e 's/>/\\>/g' -e 's/#/\\#/g' -e 's/+/\\+/g' -e 's/=/\\=/g' -e 's/|/\\|/g' -e 's/{/\\{/g' -e 's/}/\\}/g' -e 's/!/\\!/g'; }
+  
+          title_e="$(printf "%s" "$title" | esc)"
+          service_e="$(printf "%s" "$service" | esc)"
+          user_e="$(printf "%s" "$user" | esc)"
+          reason_e="$(printf "%s" "$reason" | esc)"
+          date_e="$(printf "%s" "$date" | esc)"
+          vold_e="$(printf "%s" "$version_old" | esc)"
+          vnew_e="$(printf "%s" "$version_new" | esc)"
+          url_e="$(printf "%s" "$url" | esc)"
+  
+          msg="$(cat <<EOF
+            $icon *$title_e*
+            
+            *Environment:* PROD
+            *Service:* $service_e
+            *Type:* microservice
+            *Location:* US
+            
+            *Version:* \`$vold_e\` → \`$vnew_e\`
+          EOF
+          )"
+  
+          if [[ "$status" != "success" && -n "$log_tail" ]]; then
+            log_e="$(printf "%s" "$log_tail" | esc)"
+            msg="${msg}
+  
+            *Last container logs:*
+            \`\`\`
+            ${log_e}
+            \`\`\`"
+                    fi
+            
+                    msg="${msg}
+            
+            *By:* $user_e
+            *Commit:* $reason_e
+            *Time:* $date_e
+            
+            [Open workflow run]($url_e)"
+  
           curl --request POST --header "Content-Type: application/json" \
-            --data "$(jq -n --arg chat_id "${{ secrets.TELEGRAM_RELEASE_CHAT_ID }}" --arg text "$msg" '{chat_id:$chat_id, text:$text}')" \
+            --data "$(jq -n --arg chat_id "${{ secrets.TELEGRAM_RELEASE_CHAT_ID }}" --arg text "$msg" '{chat_id:$chat_id, text:$text, parse_mode:"MarkdownV2"}')" \
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage"
-      
-
-
+  
+  
+  
   #-------------- DEPLOY API TO PROD (matrix US, SG) ----------------#
   deploy-api-on-prod:
-    # if: ${{ inputs.service_type == 'api' && github.ref_name == 'main' && inputs.build_version == '' && github.event_name == 'release' && github.event.action == 'published' }}
-    # if: ${{ inputs.service_type == 'api' && github.event.release.target_commitish == 'main' && (inputs.build_version == '' || inputs.build_version == null) && github.event_name == 'release' && github.event.action == 'published' }}
-    if: ${{  inputs.service_type == 'api' && inputs.service_type != 'server' && inputs.build_version == '' && github.event_name == 'release' && github.event.action == 'published' }}
+    if: ${{ inputs.service_type == 'api' && github.event_name == 'release' && github.event.action == 'published' && github.event.release.target_commitish == 'main' && (inputs.build_version == '' || inputs.build_version == null) }}
     runs-on: ${{ inputs.image }}
     name: "[${{ matrix.location }}] Deploy API on PROD"
-
+  
     strategy:
-      # US как gate: если US упал — SG не запускаем
       fail-fast: true
       max-parallel: 1
       matrix:
         location: [US, SG]
-
+  
     steps:
       - uses: actions/checkout@v3
-
+  
       - name: Get last commit message
         id: get_commit
         continue-on-error: true
         run: |
           COMMIT_MESSAGE=$(git log -1 --pretty=%B)
-          echo $COMMIT_MESSAGE
+          echo "$COMMIT_MESSAGE"
           echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
-
+  
       - name: Get release version
         id: get_version
         run: |
@@ -637,159 +725,232 @@ jobs:
           fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Using version: $VERSION"
-
+  
       - name: Resolve location + SSH target
+        shell: bash
         run: |
+          set -euo pipefail
           echo "DEPLOY_ENV=PROD" >> $GITHUB_ENV
           echo "SERVICE_TYPE=api" >> $GITHUB_ENV
           echo "DEPLOY_LOCATION=${{ matrix.location }}" >> $GITHUB_ENV
-
+  
           case "${{ matrix.location }}" in
-            US)
-              echo "SSH_TARGET=${{ secrets.SSH_ACCESS_US_01 }}" >> $GITHUB_ENV
-              ;;
-            SG)
-              echo "SSH_TARGET=${{ secrets.SSH_ACCESS_SG_01 }}" >> $GITHUB_ENV
-              ;;
-            *)
-              echo "Unknown location: ${{ matrix.location }}"
-              exit 1
-              ;;
+            US) echo "SSH_TARGET=${{ secrets.SSH_ACCESS_US_01 }}" >> $GITHUB_ENV ;;
+            SG) echo "SSH_TARGET=${{ secrets.SSH_ACCESS_SG_01 }}" >> $GITHUB_ENV ;;
+            *)  echo "Unknown location: ${{ matrix.location }}"; exit 1 ;;
           esac
-
+  
       - name: Configure SSH
         uses: webfactory/ssh-agent@v0.5.3
         with:
           ssh-private-key: ${{ secrets.SSH_KEY_FOR_DEPLOY }}
-
-      - name: Deploy API services (${{ matrix.location }})
+  
+      - name: Deploy API services (${{ matrix.location }}) with rollback + log tail
         id: deploy_api
+        shell: bash
         run: |
           set -euo pipefail
-
-          CURRENT_VERSION=$(ssh -o StrictHostKeyChecking=no "$SSH_TARGET" << 'EOF'
+  
+          # Get CURRENT_VERSION from target (for notification)
+          CURRENT_VERSION=$(ssh -o StrictHostKeyChecking=no "$SSH_TARGET" <<'EOF'
             cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }} || { echo "Directory not found"; exit 1; }
             grep -Po "(?<=${{ inputs.repository_name }}:)[0-9].*" *.*ml || echo "unknown"
           EOF
           )
-
           CURRENT_VERSION=$(echo "$CURRENT_VERSION" | grep -Eo '[0-9].*' | tail -n 1)
           if [[ -z "$CURRENT_VERSION" ]]; then
             echo "Error: Unable to extract current version"
             exit 1
           fi
-
           echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
-
-          ssh -o StrictHostKeyChecking=no "$SSH_TARGET" << 'EOF'
+  
+          DEPLOY_OUT="$(ssh -o StrictHostKeyChecking=no "$SSH_TARGET" <<'EOF'
             set -euo pipefail
-            echo "------------ Starting API deployment (${{ matrix.location }})... ------------"
             cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }}
-
+            
+            SERVICE_NAME="${{ inputs.repository_name }}"
+            WAIT_SEC=15
+            TAIL_LINES=120
+            MAX_RESTARTS=1
+            
+            echo "------------ Starting API deployment (${{ matrix.location }})... ------------"
+            
             OLD_IMAGE=$(grep -Po "(myproptrading|ghcr.io/my-prop-trading)/${{ inputs.repository_name }}:[0-9].*" *.*ml | tail -n 1)
             if [[ -z "$OLD_IMAGE" ]]; then
               echo "Error: unable to find current image"
               exit 1
             fi
-
+            echo "Old image: $OLD_IMAGE"
+            
             if [[ "$OLD_IMAGE" == myproptrading/* ]]; then
               NEW_IMAGE="ghcr.io/my-prop-trading/${{ inputs.repository_name }}:${{ env.VERSION }}"
             else
               NEW_IMAGE=$(echo "$OLD_IMAGE" | sed -r "s/:.*$/:${{ env.VERSION }}/")
             fi
-
+            echo "New image: $NEW_IMAGE"
+            
+            BACKUP_DIR=".rollback_backup_$(date +%Y%m%d_%H%M%S)"
+            mkdir -p "$BACKUP_DIR"
+            cp -a ./*.*ml "$BACKUP_DIR"/
+            
             find . -type f -name "*.*ml" -exec sed -i -r "s|$OLD_IMAGE|$NEW_IMAGE|g" {} \;
-
+            
             docker pull "$NEW_IMAGE"
             docker-compose up -d
-
+            
+            echo "Waiting ${WAIT_SEC}s for container to stabilize..."
+            sleep "$WAIT_SEC"
+            
+            CID="$(docker-compose ps -q "$SERVICE_NAME" || true)"
+            if [[ -z "$CID" ]]; then
+              echo "__ROLLBACK_TRIGGERED__=1"
+              echo "__REASON__=container_id_not_found"
+              echo "__LOG_TAIL_BEGIN__"
+              echo "Could not resolve container id for service: $SERVICE_NAME"
+              echo "__LOG_TAIL_END__"
+              echo "Rolling back (restore compose files) ..."
+              cp -a "$BACKUP_DIR"/*.*ml ./
+              docker-compose up -d
+              exit 1
+            fi
+            
+            STATE="$(docker inspect -f '{{.State.Status}}' "$CID" 2>/dev/null || echo unknown)"
+            RESTARTS="$(docker inspect -f '{{.RestartCount}}' "$CID" 2>/dev/null || echo 0)"
+            HEALTH="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$CID" 2>/dev/null || echo none)"
+            
+            echo "Post-deploy check: service=$SERVICE_NAME cid=$CID state=$STATE restarts=$RESTARTS health=$HEALTH"
+            
+            BAD=0
+            if [[ "$STATE" == "restarting" || "$STATE" == "exited" || "$STATE" == "dead" ]]; then
+              BAD=1
+            fi
+            if [[ "$HEALTH" == "unhealthy" ]]; then
+              BAD=1
+            fi
+            if [[ "$STATE" != "running" && "$RESTARTS" -ge "$MAX_RESTARTS" ]]; then
+              BAD=1
+            fi
+            
+            if [[ "$BAD" -eq 1 ]]; then
+              echo "__ROLLBACK_TRIGGERED__=1"
+              echo "__CONTAINER_ID__=$CID"
+              echo "__STATE__=$STATE"
+              echo "__RESTARTS__=$RESTARTS"
+              echo "__HEALTH__=$HEALTH"
+            
+              echo "__LOG_TAIL_BEGIN__"
+              docker logs --tail "$TAIL_LINES" "$CID" 2>&1 || true
+              echo "__LOG_TAIL_END__"
+            
+              echo "❌ Bad container state detected. Rolling back to old image..."
+              cp -a "$BACKUP_DIR"/*.*ml ./
+              docker pull "$OLD_IMAGE" >/dev/null 2>&1 || true
+              docker-compose up -d
+              echo "✅ Rollback completed to: $OLD_IMAGE"
+              exit 1
+            fi
+            
+            echo "__ROLLBACK_TRIGGERED__=0"
+            echo "✅ Deploy looks OK."
             echo "------------ Finished API deployment (${{ matrix.location }})! ------------"
           EOF
-
-      # - name: Notify API deploy (${{ matrix.location }})
-      #   if: ${{ always() && steps.deploy_api.outcome != '' }}
-      #   run: |
-      #     set -euo pipefail
-      #     status="${{ steps.deploy_api.outcome }}"
-
-      #     user="Launched deploy by: ${{ github.actor }}"
-      #     reason="Last commit: ${{ env.COMMIT_MESSAGE }}"
-      #     date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
-      #     pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
-      #     meta="Type: API\nLocation: ${{ matrix.location }}"
-      #     version_info="${CURRENT_VERSION:-unknown} ---> ${{ env.VERSION }}"
-
-      #     curl --request POST --header "Content-Type: application/json" \
-      #       --data "{\"text\":\"[RELEASE] Deploy result: ${status}\n\nService: ${{ inputs.repository_name }}\n${meta}\n\n${version_info}\n\n${user}\n${reason}\n${date}\n\nAction URL:\n$pipeline_url\"}" \
-      #       "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_RELEASE_CHAT_ID }}"
-
-
+          )" || true
+  
+          echo "$DEPLOY_OUT"
+  
+          LOG_TAIL="$(echo "$DEPLOY_OUT" | awk '/__LOG_TAIL_BEGIN__/{flag=1;next} /__LOG_TAIL_END__/{flag=0} flag')"
+          LOG_TAIL="$(printf "%s" "$LOG_TAIL" | tail -n 120)"
+          LOG_TAIL="${LOG_TAIL:0:2500}"
+  
+          {
+            echo "deploy_log_tail<<EOF"
+            echo "$LOG_TAIL"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+  
+          if echo "$DEPLOY_OUT" | grep -q "__ROLLBACK_TRIGGERED__=1"; then
+            exit 1
+          fi
+  
       - name: Notify API deploy (${{ matrix.location }})
         if: ${{ always() && steps.deploy_api.outcome != '' }}
         shell: bash
         run: |
           set -euo pipefail
+  
           status="${{ steps.deploy_api.outcome }}"
-      
+          log_tail="${{ steps.deploy_api.outputs.deploy_log_tail }}"
+  
           service="${{ inputs.repository_name }}"
           location="${{ matrix.location }}"
           version_new="${{ env.VERSION }}"
-          version_old="${CURRENT_VERSION:-unknown}"
-      
+          version_old="${{ env.CURRENT_VERSION }}"
+  
           user="${{ github.actor }}"
           reason="${{ env.COMMIT_MESSAGE }}"
           date="$(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
           url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-      
+  
           if [[ "$status" == "success" ]]; then
             icon="✅"
-            title="*RELEASE Deploy Successful*"
+            title="RELEASE Deploy Successful"
           elif [[ "$status" == "failure" ]]; then
             icon="❌"
-            title="*RELEASE Deploy Failed*"
+            title="RELEASE Deploy FAILED (rolled back)"
           else
             icon="⚠️"
-            title="*RELEASE Deploy: $status*"
+            title="RELEASE Deploy ${status}"
           fi
-      
-          # Экранирование MarkdownV2 для Telegram
+  
           esc() { sed -e 's/\\/\\\\/g' -e 's/\./\\./g' -e 's/\-/\\-/g' -e 's/(/\\(/g' -e 's/)/\\)/g' -e 's/\[/\\[/g' -e 's/\]/\\]/g' -e 's/_/\\_/g' -e 's/\*/\\*/g' -e 's/`/\\`/g' -e 's/>/\\>/g' -e 's/#/\\#/g' -e 's/+/\\+/g' -e 's/=/\\=/g' -e 's/|/\\|/g' -e 's/{/\\{/g' -e 's/}/\\}/g' -e 's/!/\\!/g'; }
-      
-          service_e=$(printf "%s" "$service" | esc)
-          location_e=$(printf "%s" "$location" | esc)
-          user_e=$(printf "%s" "$user" | esc)
-          reason_e=$(printf "%s" "$reason" | esc)
-          date_e=$(printf "%s" "$date" | esc)
-          vold_e=$(printf "%s" "$version_old" | esc)
-          vnew_e=$(printf "%s" "$version_new" | esc)
-          url_e=$(printf "%s" "$url" | esc)
-      
-          # ✅ собираем многострочное сообщение безопасно
+  
+          title_e="$(printf "%s" "$title" | esc)"
+          service_e="$(printf "%s" "$service" | esc)"
+          location_e="$(printf "%s" "$location" | esc)"
+          user_e="$(printf "%s" "$user" | esc)"
+          reason_e="$(printf "%s" "$reason" | esc)"
+          date_e="$(printf "%s" "$date" | esc)"
+          vold_e="$(printf "%s" "$version_old" | esc)"
+          vnew_e="$(printf "%s" "$version_new" | esc)"
+          url_e="$(printf "%s" "$url" | esc)"
+  
           msg="$(cat <<EOF
-          $icon $title
-          
-          *Service:* $service_e
-          *Type:* API
-          *Location:* $location_e
-          
-          *Version:* \`$vold_e\` → \`$vnew_e\`
-          
-          *By:* $user_e
-          *Commit:* $reason_e
-          *Time:* $date_e
-          
-          [Open workflow run]($url_e)
+            $icon *$title_e*
+            
+            *Environment:* PROD
+            *Service:* $service_e
+            *Type:* API
+            *Location:* $location_e
+            
+            *Version:* \`$vold_e\` → \`$vnew_e\`
           EOF
-              )"
-      
+          )"
+  
+          if [[ "$status" != "success" && -n "$log_tail" ]]; then
+            log_e="$(printf "%s" "$log_tail" | esc)"
+            msg="${msg}
+  
+            *Last container logs:*
+            \`\`\`
+            ${log_e}
+            \`\`\`"
+                    fi
+            
+                    msg="${msg}
+            
+            *By:* $user_e
+            *Commit:* $reason_e
+            *Time:* $date_e
+            
+            [Open workflow run]($url_e)"
+  
           curl --request POST --header "Content-Type: application/json" \
             --data "$(jq -n --arg chat_id "${{ secrets.TELEGRAM_RELEASE_CHAT_ID }}" --arg text "$msg" '{chat_id:$chat_id, text:$text, parse_mode:"MarkdownV2"}')" \
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage"
-
-
-
-#-------------- Send ERROR notification ----------------#
+  
+  
+  
+  #-------------- Send ERROR notification ----------------#
   notify-telegram-error:
     needs: [test-rust, test-csharp, build-rust, build-csharp, deploy-on-alpha, deploy-on-prod, deploy-api-on-prod]
     runs-on: ${{ inputs.image }}
