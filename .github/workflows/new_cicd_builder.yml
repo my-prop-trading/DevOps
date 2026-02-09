@@ -575,15 +575,15 @@ jobs:
             fi
             
             if [[ "$BAD" -eq 1 ]]; then
-              echo "__ROLLBACK_TRIGGERED__=1"
-              echo "__CONTAINER_ID__=$CID"
-              echo "__STATE__=$STATE"
-              echo "__RESTARTS__=$RESTARTS"
-              echo "__HEALTH__=$HEALTH"
+              echo "----> ROLLBACK_TRIGGERED=1"
+              echo "----> CONTAINER_ID=$CID"
+              echo "----> STATE=$STATE"
+              echo "----> RESTARTS=$RESTARTS"
+              echo "----> HEALTH=$HEALTH"
             
-              echo "__LOG_TAIL_BEGIN__"
+              echo " LOG_TAIL_BEGIN  -------> " 
               docker logs --tail "$TAIL_LINES" "$CID" 2>&1 || true
-              echo "__LOG_TAIL_END__"
+              echo " <-------  LOG_TAIL_END"
             
               echo "❌ Bad container state detected. Rolling back to old image..."
               cp -a "$BACKUP_DIR"/*.*ml ./
@@ -594,7 +594,7 @@ jobs:
               exit 1
             fi
             
-            echo "__ROLLBACK_TRIGGERED__=0"
+            echo "----> ROLLBACK_TRIGGERED=0"
             echo "✅ Deploy looks OK."
             echo "------------ Finished deployment ! ------------"
           EOF
@@ -840,15 +840,15 @@ jobs:
             fi
             
             if [[ "$BAD" -eq 1 ]]; then
-              echo "__ROLLBACK_TRIGGERED__=1"
-              echo "__CONTAINER_ID__=$CID"
-              echo "__STATE__=$STATE"
-              echo "__RESTARTS__=$RESTARTS"
-              echo "__HEALTH__=$HEALTH"
+              echo "----> ROLLBACK_TRIGGERED=1"
+              echo "----> CONTAINER_ID=$CID"
+              echo "----> STATE=$STATE"
+              echo "----> RESTARTS=$RESTARTS"
+              echo "----> HEALTH=$HEALTH"
             
-              echo "__LOG_TAIL_BEGIN__"
+              echo "LOG_TAIL_BEGIN  -------> "
               docker logs --tail "$TAIL_LINES" "$CID" 2>&1 || true
-              echo "__LOG_TAIL_END__"
+              echo " <-------  LOG_TAIL_END"
             
               echo "❌ Bad container state detected. Rolling back to old image..."
               cp -a "$BACKUP_DIR"/*.*ml ./
@@ -859,7 +859,7 @@ jobs:
               exit 1
             fi
             
-            echo "__ROLLBACK_TRIGGERED__=0"
+            echo "----> ROLLBACK_TRIGGERED=0"
             echo "✅ Deploy looks OK."
             echo "Cleaning backup dir: $BACKUP_DIR"
             rm -rf "$BACKUP_DIR"
