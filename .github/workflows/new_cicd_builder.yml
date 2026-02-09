@@ -447,7 +447,7 @@ jobs:
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage"
 
 
-  
+
   #-------------- DEPLOY TO PROD (SERVER only, US) ----------------#
   deploy-on-prod:
     if: ${{ inputs.service_type == 'server' && github.event_name == 'release' && github.event.action == 'published' && github.event.release.target_commitish == 'main' && (inputs.build_version == '' || inputs.build_version == null) }}
@@ -601,7 +601,7 @@ jobs:
   
           # Extract log tail from markers (if present)
           LOG_TAIL="$(echo "$DEPLOY_OUT" | awk '/__LOG_TAIL_BEGIN__/{flag=1;next} /__LOG_TAIL_END__/{flag=0} flag')"
-          LOG_TAIL="$(printf "%s" "$LOG_TAIL" | tail -n 10)"
+          LOG_TAIL="$(printf "%s" "$LOG_TAIL" | tail -n 120)"
           LOG_TAIL="${LOG_TAIL:0:2500}"
   
           {
@@ -781,14 +781,6 @@ jobs:
               exit 1
             fi
             echo "Old image: $OLD_IMAGE"
-
-            ls -la
-            cat docker-compose.yaml
-            rm -r .rollback_backup_*
-            ls -la
-            BACKUP_DIR=".rollback_backup_$(date +%Y%m%d_%H%M%S)"
-            mkdir -p "$BACKUP_DIR"
-            cp -a ./*.*ml "$BACKUP_DIR"/
             
             if [[ "$OLD_IMAGE" == myproptrading/* ]]; then
               NEW_IMAGE="ghcr.io/my-prop-trading/${{ inputs.repository_name }}:${{ env.VERSION }}"
@@ -797,9 +789,9 @@ jobs:
             fi
             echo "New image: $NEW_IMAGE"
             
-            # BACKUP_DIR=".rollback_backup_$(date +%Y%m%d_%H%M%S)"
-            # mkdir -p "$BACKUP_DIR"
-            # cp -a ./*.*ml "$BACKUP_DIR"/
+            BACKUP_DIR=".rollback_backup_$(date +%Y%m%d_%H%M%S)"
+            mkdir -p "$BACKUP_DIR"
+            cp -a ./*.*ml "$BACKUP_DIR"/
             
             find . -type f -name "*.*ml" -exec sed -i -r "s|$OLD_IMAGE|$NEW_IMAGE|g" {} \;
             
@@ -817,9 +809,7 @@ jobs:
               echo "Could not resolve container id for service: $SERVICE_NAME"
               echo "__LOG_TAIL_END__"
               echo "Rolling back (restore compose files) ..."
-              
               cp -a "$BACKUP_DIR"/*.*ml ./
-              cat docker-compose.yaml
               docker-compose up -d
               exit 1
             fi
@@ -842,24 +832,22 @@ jobs:
             fi
             
             if [[ "$BAD" -eq 1 ]]; then
-              echo " ---> ROLLBACK_TRIGGERED=1"
-              echo " ---> CONTAINER_ID=$CID"
-              echo " ---> STATE=$STATE"
-              echo " ---> RESTARTS=$RESTARTS"
-              echo " ---> HEALTH=$HEALTH"
+              echo "__ROLLBACK_TRIGGERED__=1"
+              echo "__CONTAINER_ID__=$CID"
+              echo "__STATE__=$STATE"
+              echo "__RESTARTS__=$RESTARTS"
+              echo "__HEALTH__=$HEALTH"
             
-              echo "LOG_TAIL_BEGIN  ------------> "
+              echo "__LOG_TAIL_BEGIN__"
               docker logs --tail "$TAIL_LINES" "$CID" 2>&1 || true
-              echo "<------------ LOG_TAIL_END"
+              echo "__LOG_TAIL_END__"
             
-              echo "❌ Bad container state detected. Rolling back to OLD image via compose files..."
-              
+              echo "❌ Bad container state detected. Rolling back to old image..."
               cp -a "$BACKUP_DIR"/*.*ml ./
-              docker-compose pull || true
+              docker pull "$OLD_IMAGE" >/dev/null 2>&1 || true
               docker-compose up -d
-              echo "✅ Rollback completed (compose restored)."
+              echo "✅ Rollback completed to: $OLD_IMAGE"
               exit 1
-
             fi
             
             echo "__ROLLBACK_TRIGGERED__=0"
@@ -871,7 +859,7 @@ jobs:
           echo "$DEPLOY_OUT"
   
           LOG_TAIL="$(echo "$DEPLOY_OUT" | awk '/__LOG_TAIL_BEGIN__/{flag=1;next} /__LOG_TAIL_END__/{flag=0} flag')"
-          LOG_TAIL="$(printf "%s" "$LOG_TAIL" | tail -n 10)"
+          LOG_TAIL="$(printf "%s" "$LOG_TAIL" | tail -n 120)"
           LOG_TAIL="${LOG_TAIL:0:2500}"
   
           {
@@ -959,7 +947,7 @@ jobs:
           curl --request POST --header "Content-Type: application/json" \
             --data "$(jq -n --arg chat_id "${{ secrets.TELEGRAM_RELEASE_CHAT_ID }}" --arg text "$msg" '{chat_id:$chat_id, text:$text, parse_mode:"MarkdownV2"}')" \
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage"
-  
+    
   
   
   #-------------- Send ERROR notification ----------------#
