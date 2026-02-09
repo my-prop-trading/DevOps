@@ -770,7 +770,7 @@ jobs:
             
             SERVICE_NAME="${{ inputs.repository_name }}"
             WAIT_SEC=15
-            TAIL_LINES=10
+            TAIL_LINES=120
             MAX_RESTARTS=1
             
             echo "------------ Starting API deployment (${{ matrix.location }})... ------------"
@@ -782,6 +782,10 @@ jobs:
             fi
             echo "Old image: $OLD_IMAGE"
             
+            BACKUP_DIR=".rollback_backup_$(date +%Y%m%d_%H%M%S)"
+            mkdir -p "$BACKUP_DIR"
+            cp -a ./*.*ml "$BACKUP_DIR"/
+            
             if [[ "$OLD_IMAGE" == myproptrading/* ]]; then
               NEW_IMAGE="ghcr.io/my-prop-trading/${{ inputs.repository_name }}:${{ env.VERSION }}"
             else
@@ -789,11 +793,9 @@ jobs:
             fi
             echo "New image: $NEW_IMAGE"
             
-            BACKUP_DIR=".rollback_backup_$(date +%Y%m%d_%H%M%S)"
-            mkdir -p "$BACKUP_DIR"
-            cp -a ./*.*ml "$BACKUP_DIR"/
-            ls -la
-            ls -la "$BACKUP_DIR"
+            # BACKUP_DIR=".rollback_backup_$(date +%Y%m%d_%H%M%S)"
+            # mkdir -p "$BACKUP_DIR"
+            # cp -a ./*.*ml "$BACKUP_DIR"/
             
             find . -type f -name "*.*ml" -exec sed -i -r "s|$OLD_IMAGE|$NEW_IMAGE|g" {} \;
             
@@ -811,15 +813,9 @@ jobs:
               echo "Could not resolve container id for service: $SERVICE_NAME"
               echo "__LOG_TAIL_END__"
               echo "Rolling back (restore compose files) ..."
-              ls -la
-              cat *.*ml
-              ls -la "$BACKUP_DIR"
-              cat "$BACKUP_DIR"/*.*ml
               
               cp -a "$BACKUP_DIR"/*.*ml ./
               docker-compose up -d
-              ls -la
-              cat *.*ml
               exit 1
             fi
             
