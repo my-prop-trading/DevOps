@@ -781,7 +781,11 @@ jobs:
               exit 1
             fi
             echo "Old image: $OLD_IMAGE"
-            
+
+            ls -la
+            cat docker-compose.yaml
+            rm -r .rollback_backup_*
+            ls -la
             BACKUP_DIR=".rollback_backup_$(date +%Y%m%d_%H%M%S)"
             mkdir -p "$BACKUP_DIR"
             cp -a ./*.*ml "$BACKUP_DIR"/
@@ -815,6 +819,7 @@ jobs:
               echo "Rolling back (restore compose files) ..."
               
               cp -a "$BACKUP_DIR"/*.*ml ./
+              cat docker-compose.yaml
               docker-compose up -d
               exit 1
             fi
@@ -866,7 +871,7 @@ jobs:
           echo "$DEPLOY_OUT"
   
           LOG_TAIL="$(echo "$DEPLOY_OUT" | awk '/__LOG_TAIL_BEGIN__/{flag=1;next} /__LOG_TAIL_END__/{flag=0} flag')"
-          LOG_TAIL="$(printf "%s" "$LOG_TAIL" | tail -n 120)"
+          LOG_TAIL="$(printf "%s" "$LOG_TAIL" | tail -n 10)"
           LOG_TAIL="${LOG_TAIL:0:2500}"
   
           {
