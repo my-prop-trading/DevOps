@@ -875,30 +875,31 @@ jobs:
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage"
   
       - name: Promote release tag -> main
-        if: ${{ github.event_name == 'release' && github.event.action == 'published' && success() }}
         shell: bash
         run: |
           set -euo pipefail
-
+      
           TAG="${{ github.event.release.tag_name }}"
           echo "Promoting tag $TAG to main..."
-
-          git fetch --prune --tags origin \
+      
+          git fetch --prune origin \
             +refs/heads/alpha:refs/remotes/origin/alpha \
-            +refs/heads/main:refs/remotes/origin/main
-
-          SHA="$(git rev-list -n 1 "$TAG")"
+            +refs/heads/main:refs/remotes/origin/main \
+            +refs/tags/*:refs/tags/*
+      
+          SHA="$(git rev-list -n 1 "refs/tags/$TAG")"
           echo "Tag $TAG => $SHA"
-
-          # защита: тэг-коммит должен быть в alpha
+      
+          # safety: tag must be in alpha history
           git merge-base --is-ancestor "$SHA" origin/alpha
-
+      
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
+      
           git checkout -B main origin/main
           git merge --ff-only "$SHA"
           git push origin main
+
   
   
   #-------------- DEPLOY API TO PROD (matrix US, SG) ----------------#
@@ -1175,27 +1176,27 @@ jobs:
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage"
   
       - name: Promote release tag -> main
-        if: ${{ github.event_name == 'release' && github.event.action == 'published' && success() }}
         shell: bash
         run: |
           set -euo pipefail
-
+      
           TAG="${{ github.event.release.tag_name }}"
           echo "Promoting tag $TAG to main..."
-
-          git fetch --prune --tags origin \
+      
+          git fetch --prune origin \
             +refs/heads/alpha:refs/remotes/origin/alpha \
-            +refs/heads/main:refs/remotes/origin/main
-
-          SHA="$(git rev-list -n 1 "$TAG")"
+            +refs/heads/main:refs/remotes/origin/main \
+            +refs/tags/*:refs/tags/*
+      
+          SHA="$(git rev-list -n 1 "refs/tags/$TAG")"
           echo "Tag $TAG => $SHA"
-
-          # защита: тэг-коммит должен быть в alpha
+      
+          # safety: tag must be in alpha history
           git merge-base --is-ancestor "$SHA" origin/alpha
-
+      
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
+      
           git checkout -B main origin/main
           git merge --ff-only "$SHA"
           git push origin main
