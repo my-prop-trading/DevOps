@@ -770,6 +770,31 @@ jobs:
             --data "$(jq -n --arg chat_id "${{ secrets.TELEGRAM_RELEASE_CHAT_ID }}" --arg text "$msg" '{chat_id:$chat_id, text:$text, parse_mode:"MarkdownV2"}')" \
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage"
   
+      - name: Promote release tag -> main
+        if: ${{ github.event_name == 'release' && github.event.action == 'published' && success() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          TAG="${{ github.event.release.tag_name }}"
+          echo "Promoting tag $TAG to main..."
+
+          git fetch --prune --tags origin \
+            +refs/heads/alpha:refs/remotes/origin/alpha \
+            +refs/heads/main:refs/remotes/origin/main
+
+          SHA="$(git rev-list -n 1 "$TAG")"
+          echo "Tag $TAG => $SHA"
+
+          # защита: тэг-коммит должен быть в alpha
+          git merge-base --is-ancestor "$SHA" origin/alpha
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git checkout -B main origin/main
+          git merge --ff-only "$SHA"
+          git push origin main
   
   
   #-------------- DEPLOY API TO PROD (matrix US, SG) ----------------#
@@ -1044,57 +1069,83 @@ jobs:
           curl --request POST --header "Content-Type: application/json" \
             --data "$(jq -n --arg chat_id "${{ secrets.TELEGRAM_RELEASE_CHAT_ID }}" --arg text "$msg" '{chat_id:$chat_id, text:$text, parse_mode:"MarkdownV2"}')" \
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage"
-    
-
   
-  #-------------- Promote main to release tag commit (after PROD deploy succeeded) ----------------#
-  promote-to-main:
-    needs: [deploy-on-prod, deploy-api-on-prod]
-    if: ${{ github.event_name == 'release' && github.event.action == 'published' &&
-      (needs.deploy-on-prod.result == 'success' || needs.deploy-api-on-prod.result == 'success') }}
-    runs-on: ubuntu-latest
-    name: "Promote tag -> main (service repo)"
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          # IMPORTANT: checkout сервисного репо, а не DevOps
-          repository: my-prop-trading/${{ inputs.repository_name }}
-          token: ${{ secrets.AUTH_TOKEN }}
-          fetch-depth: 0
-  
-      - name: Fetch branches and tags
+      - name: Promote release tag -> main
+        if: ${{ github.event_name == 'release' && github.event.action == 'published' && success() }}
         shell: bash
         run: |
           set -euo pipefail
+
+          TAG="${{ github.event.release.tag_name }}"
+          echo "Promoting tag $TAG to main..."
+
           git fetch --prune --tags origin \
             +refs/heads/alpha:refs/remotes/origin/alpha \
             +refs/heads/main:refs/remotes/origin/main
-  
-      - name: Resolve release tag -> SHA
-        id: tag
-        shell: bash
-        run: |
-          set -euo pipefail
-          TAG="${{ github.event.release.tag_name }}"
+
           SHA="$(git rev-list -n 1 "$TAG")"
-          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
-          echo "Release tag $TAG => $SHA"
-  
-      - name: Ensure tag commit is contained in alpha
-        shell: bash
-        run: |
-          set -euo pipefail
-          git merge-base --is-ancestor "${{ steps.tag.outputs.sha }}" origin/alpha
-  
-      - name: Fast-forward main to tag commit
-        shell: bash
-        run: |
-          set -euo pipefail
+          echo "Tag $TAG => $SHA"
+
+          # защита: тэг-коммит должен быть в alpha
+          git merge-base --is-ancestor "$SHA" origin/alpha
+
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
           git checkout -B main origin/main
-          git merge --ff-only "${{ steps.tag.outputs.sha }}"
+          git merge --ff-only "$SHA"
           git push origin main
+
+
+  
+  # #-------------- Promote main to release tag commit (after PROD deploy succeeded) ----------------#
+  # promote-to-main:
+  #   needs: [deploy-on-prod, deploy-api-on-prod]
+  #   if: ${{ github.event_name == 'release' && github.event.action == 'published' &&
+  #     (needs.deploy-on-prod.result == 'success' || needs.deploy-api-on-prod.result == 'success') }}
+  #   runs-on: ubuntu-latest
+  #   name: "Promote tag -> main (service repo)"
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         # IMPORTANT: checkout сервисного репо, а не DevOps
+  #         repository: my-prop-trading/${{ inputs.repository_name }}
+  #         token: ${{ secrets.AUTH_TOKEN }}
+  #         fetch-depth: 0
+  
+  #     - name: Fetch branches and tags
+  #       shell: bash
+  #       run: |
+  #         set -euo pipefail
+  #         git fetch --prune --tags origin \
+  #           +refs/heads/alpha:refs/remotes/origin/alpha \
+  #           +refs/heads/main:refs/remotes/origin/main
+  
+  #     - name: Resolve release tag -> SHA
+  #       id: tag
+  #       shell: bash
+  #       run: |
+  #         set -euo pipefail
+  #         TAG="${{ github.event.release.tag_name }}"
+  #         SHA="$(git rev-list -n 1 "$TAG")"
+  #         echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+  #         echo "Release tag $TAG => $SHA"
+  
+  #     - name: Ensure tag commit is contained in alpha
+  #       shell: bash
+  #       run: |
+  #         set -euo pipefail
+  #         git merge-base --is-ancestor "${{ steps.tag.outputs.sha }}" origin/alpha
+  
+  #     - name: Fast-forward main to tag commit
+  #       shell: bash
+  #       run: |
+  #         set -euo pipefail
+  #         git config user.name  "github-actions[bot]"
+  #         git config user.email "github-actions[bot]@users.noreply.github.com"
+  #         git checkout -B main origin/main
+  #         git merge --ff-only "${{ steps.tag.outputs.sha }}"
+  #         git push origin main
 
 
   
