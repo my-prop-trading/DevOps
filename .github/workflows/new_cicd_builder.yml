@@ -571,7 +571,8 @@ jobs:
 
   tag-alpha-commit:
     needs: [set-version, deploy-on-alpha]
-    if: ${{ needs.set-version.outputs.mode == 'alpha' && needs.deploy-on-alpha.result == 'success' }}
+    # job запускаем всегда, чтобы видеть дебаг
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     name: "Tag commit with build_version"
     steps:
@@ -579,16 +580,19 @@ jobs:
         with:
           fetch-depth: 0
   
-      - name: Debug tag job context
+      - name: Debug tag-alpha-commit context
+        shell: bash
         run: |
-          echo "event=${{ github.event_name }}"
-          echo "ref=${{ github.ref }}"
-          echo "ref_name=${{ github.ref_name }}"
+          echo "github.event_name=${{ github.event_name }}"
+          echo "github.ref=${{ github.ref }}"
+          echo "github.ref_name=${{ github.ref_name }}"
           echo "mode=${{ needs.set-version.outputs.mode }}"
           echo "version=${{ needs.set-version.outputs.version }}"
-          echo "deploy-on-alpha result=${{ needs.deploy-on-alpha.result }}"
+          echo "deploy-on-alpha.result=${{ needs.deploy-on-alpha.result }}"
   
       - name: Create git tag for version
+        # ✅ вот тут реальное условие, когда тегим
+        if: ${{ needs.set-version.outputs.mode == 'alpha' && needs.deploy-on-alpha.result == 'success' && needs.set-version.outputs.version != '' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -606,6 +610,12 @@ jobs:
   
           git tag -a "$TAG" -m "Alpha build $TAG"
           git push origin "refs/tags/$TAG"
+  
+      - name: Skip reason (when not tagging)
+        if: ${{ !(needs.set-version.outputs.mode == 'alpha' && needs.deploy-on-alpha.result == 'success' && needs.set-version.outputs.version != '') }}
+        run: |
+          echo "Tag step skipped because conditions were not met."
+
 
 
   #-------------- DEPLOY TO PROD (SERVER only, US) ----------------#
