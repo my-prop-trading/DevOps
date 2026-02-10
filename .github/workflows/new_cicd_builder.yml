@@ -1151,7 +1151,7 @@ jobs:
   
   #-------------- Send ERROR notification ----------------#
   notify-telegram-error:
-    needs: [set-version, tag-alpha-commit, test-rust, test-csharp, build-rust, build-csharp, deploy-on-alpha, deploy-on-prod, deploy-api-on-prod, promote-to-main]
+    needs: [set-version, tag-alpha-commit, test-rust, test-csharp, build-rust, build-csharp, deploy-on-alpha, deploy-on-prod, deploy-api-on-prod]
     runs-on: ${{ inputs.image }}
     name: "Send ERROR notification"
     if: failure()
