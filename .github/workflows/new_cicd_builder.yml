@@ -534,21 +534,59 @@ jobs:
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage"
 
   #-------------- TAG commit (after alpha deploy succeeded) ----------------#
+  # tag-alpha-commit:
+  #   needs: [set-version, deploy-on-alpha]
+  #   if: >
+  #     ${{
+  #       github.event_name == 'workflow_dispatch' &&
+  #       needs.set-version.outputs.mode == 'alpha' &&
+  #       needs.deploy-on-alpha.result == 'success' &&
+  #       needs.set-version.outputs.version != ''
+  #     }}
+  #   runs-on: ubuntu-latest
+  #   name: "Tag commit with build_version"
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+  
+  #     - name: Create git tag for version
+  #       shell: bash
+  #       run: |
+  #         set -euo pipefail
+  #         TAG="${{ needs.set-version.outputs.version }}"
+  
+  #         git fetch --tags
+  
+  #         if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+  #           echo "::error title=Tag exists::Tag $TAG already exists"
+  #           exit 1
+  #         fi
+  
+  #         git config user.name  "github-actions[bot]"
+  #         git config user.email "github-actions[bot]@users.noreply.github.com"
+  
+  #         git tag -a "$TAG" -m "Alpha build $TAG"
+  #         git push origin "refs/tags/$TAG"
+
   tag-alpha-commit:
     needs: [set-version, deploy-on-alpha]
-    if: >
-      ${{
-        github.event_name == 'workflow_dispatch' &&
-        needs.set-version.outputs.mode == 'alpha' &&
-        needs.deploy-on-alpha.result == 'success' &&
-        needs.set-version.outputs.version != ''
-      }}
+    if: ${{ needs.set-version.outputs.mode == 'alpha' && needs.deploy-on-alpha.result == 'success' }}
     runs-on: ubuntu-latest
     name: "Tag commit with build_version"
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+  
+      - name: Debug tag job context
+        run: |
+          echo "event=${{ github.event_name }}"
+          echo "ref=${{ github.ref }}"
+          echo "ref_name=${{ github.ref_name }}"
+          echo "mode=${{ needs.set-version.outputs.mode }}"
+          echo "version=${{ needs.set-version.outputs.version }}"
+          echo "deploy-on-alpha result=${{ needs.deploy-on-alpha.result }}"
   
       - name: Create git tag for version
         shell: bash
