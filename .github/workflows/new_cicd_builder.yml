@@ -55,11 +55,28 @@ on:
         required: true
         
 permissions:
-  contents: read
-  packages: write
+  contents: write   # теги + promote main
+  packages: write   # ghcr push
 
 jobs:         
 
+  set-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      mode: ${{ steps.v.outputs.mode }} # alpha|release
+    steps:
+      - id: v
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            echo "mode=release" >> "$GITHUB_OUTPUT"
+            echo "version=${{ inputs.release_version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "mode=alpha" >> "$GITHUB_OUTPUT"
+            echo "version=${{ inputs.build_version }}" >> "$GITHUB_OUTPUT"
+          fi
 
 #-------------- TEST RUST ----------------#
   test-rust:
@@ -128,15 +145,22 @@ jobs:
 
 #-------------- BUILD RUST ----------------#
   build-rust:
+    needs: [set-version]
     # if: ${{ (inputs.language == 'rust' && github.event_name == 'release' && github.event.action == 'published') || (inputs.language == 'rust' && inputs.build_version != '' && github.ref_name != 'main') }}
     if: ${{ inputs.language == 'rust' && github.event_name != 'release' && github.event.action != 'published' && inputs.build_version != '' && github.ref_name != 'main' }}
     runs-on: ${{ inputs.image }}
     name: "[RUST] Build code"
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # - name: Check dump all context
       #   uses: crazy-max/ghaction-dump-context@v2
+
+      - name: Export VERSION
+        run: |
+          echo "VERSION=${{ needs.set-version.outputs.version }}" >> $GITHUB_ENV
 
       - name: Get release version
         id: get_version
@@ -213,11 +237,18 @@ jobs:
           
   #-------------- BUILD C# ----------------#
   build-csharp:
+    needs: [set-version]
     if: ${{ inputs.language == 'csharp' && github.event_name != 'release' && github.event.action != 'published' && inputs.build_version != '' && github.ref_name != 'main' }}
     runs-on: ${{ inputs.image }}
     name: "[C#] Build code"
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Export VERSION
+        run: |
+          echo "VERSION=${{ needs.set-version.outputs.version }}" >> $GITHUB_ENV
 
       - name: Get release version
         id: get_version
@@ -292,12 +323,19 @@ jobs:
 
   #-------------- DEPLOY TO ALPHA ----------------#
   deploy-on-alpha:
-    needs: [ build-csharp, build-rust ]
-    if: ${{ always() && contains(needs.*.result, 'success') && !(contains(needs.*.result, 'failure')) }}
+    needs: [ set-version, build-csharp, build-rust ]
+    # if: ${{ always() && contains(needs.*.result, 'success') && !(contains(needs.*.result, 'failure')) }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref_name == 'alpha' && needs.set-version.outputs.version != '' && always() && contains(needs.*.result,'success') && !contains(needs.*.result,'failure') }}
     runs-on: ${{ inputs.image }}
     name: "[alpha] Deploy on server"
     steps:
-      - uses: actions/checkout@v4  
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Export VERSION
+        run: |
+          echo "VERSION=${{ needs.set-version.outputs.version }}" >> $GITHUB_ENV
       
       - name: Get last commit message
         id: get_commit
@@ -445,15 +483,53 @@ jobs:
             --data "$(jq -n --arg chat_id "${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}" --arg text "$msg" '{chat_id:$chat_id, text:$text}')" \
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage"
 
+    #-------------- TAG commit (after alpha deploy succeeded) ----------------#
+  tag-alpha-commit:
+    needs: [set-version, deploy-on-alpha]
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref_name == 'alpha' && needs.set-version.outputs.version != '' }}
+    runs-on: ubuntu-latest
+    name: "Tag commit with build_version"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create git tag for version
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ needs.set-version.outputs.version }}"
+
+          git fetch --tags
+
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "::error title=Tag exists::Tag $TAG already exists"
+            exit 1
+          fi
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git tag -a "$TAG" -m "Alpha build $TAG"
+          git push origin "refs/tags/$TAG"
 
 
   #-------------- DEPLOY TO PROD (SERVER only, US) ----------------#
   deploy-on-prod:
-    if: ${{ inputs.service_type == 'server' && github.event_name == 'release' && github.event.action == 'published' && github.event.release.target_commitish == 'main' && (inputs.build_version == '' || inputs.build_version == null) }}
+    needs: [set-version]
+    # if: ${{ inputs.service_type == 'server' && github.event_name == 'release' && github.event.action == 'published' && github.event.release.target_commitish == 'main' && (inputs.build_version == '' || inputs.build_version == null) }}
+    if: ${{ inputs.service_type == 'server' && github.event_name == 'release' && github.event.action == 'published' }}
     runs-on: ${{ inputs.image }}
     name: "[US] Deploy on PROD"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Export VERSION
+        shell: bash
+        run: |
+          echo "VERSION=${{ needs.set-version.outputs.version }}" >> $GITHUB_ENV
   
       - name: Get last commit message
         id: get_commit
@@ -471,16 +547,16 @@ jobs:
       # - name: Check dump all context
       #   uses: crazy-max/ghaction-dump-context@v2
   
-      - name: Get release version
-        id: get_version
-        run: |
-          if [ -z "${{ inputs.build_version }}" ]; then
-            VERSION="${{ inputs.release_version }}"
-          else
-            VERSION="${{ inputs.build_version }}"
-          fi
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Using version: $VERSION"
+      # - name: Get release version
+      #   id: get_version
+      #   run: |
+      #     if [ -z "${{ inputs.build_version }}" ]; then
+      #       VERSION="${{ inputs.release_version }}"
+      #     else
+      #       VERSION="${{ inputs.build_version }}"
+      #     fi
+      #     echo "VERSION=$VERSION" >> $GITHUB_ENV
+      #     echo "Using version: $VERSION"
   
       - name: Deploy microservices (US) with rollback + log tail
         id: deploy_server_us
@@ -493,6 +569,7 @@ jobs:
   
           # Get CURRENT_VERSION from server (for notification)
           CURRENT_VERSION=$(ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_ACCESS_US_01 }} <<'EOF'
+            set -euo pipefail
             cd ~/docker-infrastructure/microservices/${{ inputs.repository_name }} || { echo "Directory not found"; exit 1; }
             grep -Po "(?<=${{ inputs.repository_name }}:)[0-9].*" *.*ml || echo "unknown"
           EOF
@@ -575,15 +652,15 @@ jobs:
             fi
             
             if [[ "$BAD" -eq 1 ]]; then
-              echo "----> ROLLBACK_TRIGGERED=1"
-              echo "----> CONTAINER_ID=$CID"
-              echo "----> STATE=$STATE"
-              echo "----> RESTARTS=$RESTARTS"
-              echo "----> HEALTH=$HEALTH"
-            
-              echo " LOG_TAIL_BEGIN  -------> " 
+              echo "__ROLLBACK_TRIGGERED__=1"
+              echo "__CONTAINER_ID__=$CID"
+              echo "__STATE__=$STATE"
+              echo "__RESTARTS__=$RESTARTS"
+              echo "__HEALTH__=$HEALTH"
+  
+              echo "__LOG_TAIL_BEGIN__"
               docker logs --tail "$TAIL_LINES" "$CID" 2>&1 || true
-              echo " <-------  LOG_TAIL_END"
+              echo "__LOG_TAIL_END__"
             
               echo "❌ Bad container state detected. Rolling back to old image..."
               cp -a "$BACKUP_DIR"/*.*ml ./
@@ -594,7 +671,7 @@ jobs:
               exit 1
             fi
             
-            echo "----> ROLLBACK_TRIGGERED=0"
+            echo "__ROLLBACK_TRIGGERED__=0"
             echo "✅ Deploy looks OK."
             echo "------------ Finished deployment ! ------------"
           EOF
@@ -697,7 +774,9 @@ jobs:
   
   #-------------- DEPLOY API TO PROD (matrix US, SG) ----------------#
   deploy-api-on-prod:
-    if: ${{ inputs.service_type == 'api' && github.event_name == 'release' && github.event.action == 'published' && github.event.release.target_commitish == 'main' && (inputs.build_version == '' || inputs.build_version == null) }}
+    needs: [set-version]
+    # if: ${{ inputs.service_type == 'api' && github.event_name == 'release' && github.event.action == 'published' && github.event.release.target_commitish == 'main' && (inputs.build_version == '' || inputs.build_version == null) }}
+    if: ${{ inputs.service_type == 'api' && github.event_name == 'release' && github.event.action == 'published' }}
     runs-on: ${{ inputs.image }}
     name: "[${{ matrix.location }}] Deploy API on PROD"
   
@@ -709,7 +788,13 @@ jobs:
         location: [US, SG]
   
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Export VERSION
+        run: |
+          echo "VERSION=${{ needs.set-version.outputs.version }}" >> $GITHUB_ENV
   
       - name: Get last commit message
         id: get_commit
@@ -719,16 +804,16 @@ jobs:
           echo "$COMMIT_MESSAGE"
           echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
   
-      - name: Get release version
-        id: get_version
-        run: |
-          if [ -z "${{ inputs.build_version }}" ]; then
-            VERSION="${{ inputs.release_version }}"
-          else
-            VERSION="${{ inputs.build_version }}"
-          fi
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Using version: $VERSION"
+      # - name: Get release version
+      #   id: get_version
+      #   run: |
+      #     if [ -z "${{ inputs.build_version }}" ]; then
+      #       VERSION="${{ inputs.release_version }}"
+      #     else
+      #       VERSION="${{ inputs.build_version }}"
+      #     fi
+      #     echo "VERSION=$VERSION" >> $GITHUB_ENV
+      #     echo "Using version: $VERSION"
   
       - name: Resolve location + SSH target
         shell: bash
@@ -840,15 +925,15 @@ jobs:
             fi
             
             if [[ "$BAD" -eq 1 ]]; then
-              echo "----> ROLLBACK_TRIGGERED=1"
-              echo "----> CONTAINER_ID=$CID"
-              echo "----> STATE=$STATE"
-              echo "----> RESTARTS=$RESTARTS"
-              echo "----> HEALTH=$HEALTH"
-            
-              echo "LOG_TAIL_BEGIN  -------> "
+              echo "__ROLLBACK_TRIGGERED__=1"
+              echo "__CONTAINER_ID__=$CID"
+              echo "__STATE__=$STATE"
+              echo "__RESTARTS__=$RESTARTS"
+              echo "__HEALTH__=$HEALTH"
+  
+              echo "__LOG_TAIL_BEGIN__"
               docker logs --tail "$TAIL_LINES" "$CID" 2>&1 || true
-              echo " <-------  LOG_TAIL_END"
+              echo "__LOG_TAIL_END__"
             
               echo "❌ Bad container state detected. Rolling back to old image..."
               cp -a "$BACKUP_DIR"/*.*ml ./
@@ -960,16 +1045,67 @@ jobs:
             --data "$(jq -n --arg chat_id "${{ secrets.TELEGRAM_RELEASE_CHAT_ID }}" --arg text "$msg" '{chat_id:$chat_id, text:$text, parse_mode:"MarkdownV2"}')" \
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage"
     
+
   
+  #-------------- Promote main to release tag commit (after PROD deploy succeeded) ----------------#
+  promote-to-main:
+    needs: [deploy-on-prod, deploy-api-on-prod]
+    if: ${{ github.event_name == 'release' && github.event.action == 'published' &&
+      (needs.deploy-on-prod.result == 'success' || needs.deploy-api-on-prod.result == 'success') }}
+    runs-on: ubuntu-latest
+    name: "Promote tag -> main (service repo)"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # IMPORTANT: checkout сервисного репо, а не DevOps
+          repository: my-prop-trading/${{ inputs.repository_name }}
+          token: ${{ secrets.AUTH_TOKEN }}
+          fetch-depth: 0
+  
+      - name: Fetch branches and tags
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --prune --tags origin \
+            +refs/heads/alpha:refs/remotes/origin/alpha \
+            +refs/heads/main:refs/remotes/origin/main
+  
+      - name: Resolve release tag -> SHA
+        id: tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ github.event.release.tag_name }}"
+          SHA="$(git rev-list -n 1 "$TAG")"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Release tag $TAG => $SHA"
+  
+      - name: Ensure tag commit is contained in alpha
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "${{ steps.tag.outputs.sha }}" origin/alpha
+  
+      - name: Fast-forward main to tag commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B main origin/main
+          git merge --ff-only "${{ steps.tag.outputs.sha }}"
+          git push origin main
+
+
   
   #-------------- Send ERROR notification ----------------#
   notify-telegram-error:
-    needs: [test-rust, test-csharp, build-rust, build-csharp, deploy-on-alpha, deploy-on-prod, deploy-api-on-prod]
+    needs: [set-version, tag-alpha-commit, test-rust, test-csharp, build-rust, build-csharp, deploy-on-alpha, deploy-on-prod, deploy-api-on-prod, promote-to-main]
     runs-on: ${{ inputs.image }}
     name: "Send ERROR notification"
     if: failure()
     steps:
-      - uses: actions/checkout@v3  
+      - uses: actions/checkout@v4  
       
       - name: Get last commit message
         id: get_commit
