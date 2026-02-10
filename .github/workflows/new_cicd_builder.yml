@@ -60,32 +60,64 @@ permissions:
 
 jobs:         
 
+  # set-version:
+  #   runs-on: ubuntu-latest
+  #   outputs:
+  #     version: ${{ steps.v.outputs.version }}
+  #     mode: ${{ steps.v.outputs.mode }} # alpha|release
+  #   steps:
+  #     - id: v
+  #       shell: bash
+  #       run: |
+  #         set -euo pipefail
+  #         if [[ "${{ github.event_name }}" == "release" ]]; then
+  #           echo "mode=release" >> "$GITHUB_OUTPUT"
+  #           echo "version=${{ inputs.release_version }}" >> "$GITHUB_OUTPUT"
+  #         else
+  #           echo "mode=alpha" >> "$GITHUB_OUTPUT"
+  #           echo "version=${{ inputs.build_version }}" >> "$GITHUB_OUTPUT"
+  #         fi
+
+  #     - name: Debug context
+  #       run: |
+  #         echo "github.event_name = ${{ github.event_name }}"
+  #         echo "github.ref        = ${{ github.ref }}"
+  #         echo "github.ref_name   = ${{ github.ref_name }}"
+  #         echo "github.sha        = ${{ github.sha }}"
+  #         echo "mode              = ${{ needs.set-version.outputs.mode }}"
+  #         echo "version           = ${{ needs.set-version.outputs.version }}"
+
+
   set-version:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.v.outputs.version }}
-      mode: ${{ steps.v.outputs.mode }} # alpha|release
+      mode: ${{ steps.v.outputs.mode }}
     steps:
       - id: v
         shell: bash
         run: |
           set -euo pipefail
+  
           if [[ "${{ github.event_name }}" == "release" ]]; then
-            echo "mode=release" >> "$GITHUB_OUTPUT"
-            echo "version=${{ inputs.release_version }}" >> "$GITHUB_OUTPUT"
+            mode="release"
+            version="${{ github.event.release.tag_name }}"
           else
-            echo "mode=alpha" >> "$GITHUB_OUTPUT"
-            echo "version=${{ inputs.build_version }}" >> "$GITHUB_OUTPUT"
+            mode="alpha"
+            version="${{ inputs.build_version }}"
           fi
+  
+          if [[ -z "$version" ]]; then
+            echo "::error::version is empty"
+            exit 1
+          fi
+  
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+  
+          echo "Resolved mode=$mode version=$version"
 
-      - name: Debug context
-        run: |
-          echo "github.event_name = ${{ github.event_name }}"
-          echo "github.ref        = ${{ github.ref }}"
-          echo "github.ref_name   = ${{ github.ref_name }}"
-          echo "github.sha        = ${{ github.sha }}"
-          echo "mode              = ${{ needs.set-version.outputs.mode }}"
-          echo "version           = ${{ needs.set-version.outputs.version }}"
+
 
 
 #-------------- TEST RUST ----------------#
@@ -339,6 +371,14 @@ jobs:
     runs-on: ${{ inputs.image }}
     name: "[alpha] Deploy on server"
     steps:
+      - name: Debug needs outputs
+        run: |
+          echo "event=${{ github.event_name }}"
+          echo "ref=${{ github.ref }}"
+          echo "ref_name=${{ github.ref_name }}"
+          echo "mode=${{ needs.set-version.outputs.mode }}"
+          echo "version=${{ needs.set-version.outputs.version }}"
+        
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
