@@ -483,33 +483,39 @@ jobs:
             --data "$(jq -n --arg chat_id "${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}" --arg text "$msg" '{chat_id:$chat_id, text:$text}')" \
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage"
 
-    #-------------- TAG commit (after alpha deploy succeeded) ----------------#
+  #-------------- TAG commit (after alpha deploy succeeded) ----------------#
   tag-alpha-commit:
     needs: [set-version, deploy-on-alpha]
-    if: ${{ github.event_name == 'workflow_dispatch' && github.ref_name == 'alpha' && needs.set-version.outputs.version != '' }}
+    if: >
+      ${{
+        github.event_name == 'workflow_dispatch' &&
+        needs.set-version.outputs.mode == 'alpha' &&
+        needs.deploy-on-alpha.result == 'success' &&
+        needs.set-version.outputs.version != ''
+      }}
     runs-on: ubuntu-latest
     name: "Tag commit with build_version"
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
+  
       - name: Create git tag for version
         shell: bash
         run: |
           set -euo pipefail
           TAG="${{ needs.set-version.outputs.version }}"
-
+  
           git fetch --tags
-
+  
           if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
             echo "::error title=Tag exists::Tag $TAG already exists"
             exit 1
           fi
-
+  
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
+  
           git tag -a "$TAG" -m "Alpha build $TAG"
           git push origin "refs/tags/$TAG"
 
