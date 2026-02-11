@@ -1189,7 +1189,7 @@ jobs:
             +refs/heads/main:refs/remotes/origin/main \
             +refs/tags/*:refs/tags/*
       
-          SHA="$(git rev-list -n 1 "refs/tags/$TAG")"
+          SHA="$(git rev-parse "$TAG^{commit}")"
           echo "Tag $TAG => $SHA"
       
           # safety: tag must be in alpha history
@@ -1199,8 +1199,17 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
       
           git checkout -B main origin/main
-          # git merge --ff-only "$SHA"
-          git merge --no-ff --no-edit "${{ steps.tag.outputs.sha }}"
+          # git merge --no-ff --no-edit "${{ steps.tag.outputs.sha }}"
+          # git push --no-tags origin main
+          
+          # сначала пробуем ff (лучший вариант)
+          if git merge --ff-only "$SHA"; then
+            echo "Fast-forward OK"
+          else
+            echo "FF not possible -> merge --no-ff"
+            git merge --no-ff --no-edit "$SHA"
+          fi
+      
           git push --no-tags origin main
 
 
