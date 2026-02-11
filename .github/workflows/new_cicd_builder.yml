@@ -898,7 +898,7 @@ jobs:
       
           git checkout -B main origin/main
           git merge --ff-only "$SHA"
-          git push origin main
+          git push --no-tags origin main
 
   
   
@@ -1199,7 +1199,7 @@ jobs:
       
           git checkout -B main origin/main
           git merge --ff-only "$SHA"
-          git push origin main
+          git push --no-tags origin main
 
 
   
