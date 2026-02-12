@@ -796,6 +796,25 @@ jobs:
             
             echo "__ROLLBACK_TRIGGERED__=0"
             echo "✅ Deploy looks OK."
+            
+            echo "__LOG_TAIL_BEGIN__"
+            # Берём последние 200 строк логов
+            RAW_LOGS="$(docker logs --tail 200 "$CID" 2>&1 || true)"
+            
+            # Ищем warning/error (без учета регистра)
+            FILTERED="$(echo "$RAW_LOGS" | grep -Ei 'warning|warn|error' | tail -n 10 || true)"
+            
+            if [[ -n "$FILTERED" ]]; then
+              echo "⚠️ Warnings/Errors detected:"
+              echo "$FILTERED"
+            else
+              echo "Last container logs:"
+              echo "No warnings or errors found in last 100 lines"
+            fi
+            echo "__LOG_TAIL_END__"
+            
+            echo "Cleaning backup dir: $BACKUP_DIR"
+            rm -rf "$BACKUP_DIR"
             echo "------------ Finished deployment ! ------------"
           EOF
           )" || true
@@ -1104,8 +1123,25 @@ jobs:
               exit 1
             fi
             
-            echo "----> ROLLBACK_TRIGGERED=0"
+            echo "__ROLLBACK_TRIGGERED__=0"
             echo "✅ Deploy looks OK."
+            
+            echo "__LOG_TAIL_BEGIN__"
+            # Берём последние 200 строк логов
+            RAW_LOGS="$(docker logs --tail 200 "$CID" 2>&1 || true)"
+            
+            # Ищем warning/error (без учета регистра)
+            FILTERED="$(echo "$RAW_LOGS" | grep -Ei 'warning|warn|error' | tail -n 10 || true)"
+            
+            if [[ -n "$FILTERED" ]]; then
+              echo "⚠️ Warnings/Errors detected:"
+              echo "$FILTERED"
+            else
+              echo "Last container logs:"
+              echo "No warnings or errors found in last 100 lines"
+            fi
+            echo "__LOG_TAIL_END__"
+            
             echo "Cleaning backup dir: $BACKUP_DIR"
             rm -rf "$BACKUP_DIR"
             echo "------------ Finished API deployment (${{ matrix.location }})! ------------"
