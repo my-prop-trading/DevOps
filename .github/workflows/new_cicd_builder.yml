@@ -590,8 +590,9 @@ jobs:
 
   tag-alpha-commit:
     needs: [set-version, deploy-on-alpha]
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'release' }}
     # job запускаем всегда, чтобы видеть дебаг
-    if: ${{ always() }}
+    # if: ${{ always() }}
     runs-on: ubuntu-latest
     name: "Tag commit with build_version"
     steps:
