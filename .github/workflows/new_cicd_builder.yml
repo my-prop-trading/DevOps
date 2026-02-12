@@ -59,11 +59,42 @@ permissions:
   packages: write   # ghcr push
 
 jobs:         
+  # set-version:
+  #   if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'release' }}
+  #   runs-on: ubuntu-latest
+  #   outputs:
+  #     version: ${{ steps.v.outputs.version }}
+  #     mode: ${{ steps.v.outputs.mode }} # alpha|release
+  #   steps:
+  #     - id: v
+  #       shell: bash
+  #       run: |
+  #         set -euo pipefail
+  
+  #         if [[ "${{ github.event_name }}" == "release" ]]; then
+  #           mode="release"
+  #           version="${{ github.event.release.tag_name }}"
+  #         else
+  #           mode="alpha"
+  #           version="${{ inputs.build_version }}"
+  #         fi
+  
+  #         if [[ -z "$version" ]]; then
+  #           echo "::error::version is empty"
+  #           exit 1
+  #         fi
+  
+  #         echo "mode=$mode" >> "$GITHUB_OUTPUT"
+  #         echo "version=$version" >> "$GITHUB_OUTPUT"
+  
+  #         echo "Resolved mode=$mode version=$version"
+
   set-version:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'release' }}
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.v.outputs.version }}
-      mode: ${{ steps.v.outputs.mode }}
+      mode: ${{ steps.v.outputs.mode }} # alpha|release
     steps:
       - id: v
         shell: bash
@@ -71,23 +102,22 @@ jobs:
           set -euo pipefail
   
           if [[ "${{ github.event_name }}" == "release" ]]; then
-            mode="release"
-            version="${{ github.event.release.tag_name }}"
-          else
-            mode="alpha"
-            version="${{ inputs.build_version }}"
+            if [[ -z "${{ github.event.release.tag_name }}" ]]; then
+              echo "Error: release tag_name is empty"; exit 1
+            fi
+            echo "mode=release" >> "$GITHUB_OUTPUT"
+            echo "version=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+            echo "Resolved mode=release version=${{ github.event.release.tag_name }}"
+            exit 0
           fi
   
-          if [[ -z "$version" ]]; then
-            echo "::error::version is empty"
-            exit 1
+          # workflow_dispatch
+          if [[ -z "${{ inputs.build_version }}" ]]; then
+            echo "Error: inputs.build_version is empty"; exit 1
           fi
-  
-          echo "mode=$mode" >> "$GITHUB_OUTPUT"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-  
-          echo "Resolved mode=$mode version=$version"
-
+          echo "mode=alpha" >> "$GITHUB_OUTPUT"
+          echo "version=${{ inputs.build_version }}" >> "$GITHUB_OUTPUT"
+          echo "Resolved mode=alpha version=${{ inputs.build_version }}"
 
 
 
