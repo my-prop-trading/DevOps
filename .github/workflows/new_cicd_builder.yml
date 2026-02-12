@@ -817,7 +817,45 @@ jobs:
           if echo "$DEPLOY_OUT" | grep -q "__ROLLBACK_TRIGGERED__=1"; then
             exit 1
           fi
-  
+
+
+      - name: Promote release tag -> main
+        shell: bash
+        run: |
+          set -euo pipefail
+      
+          TAG="${{ github.event.release.tag_name }}"
+          echo "Promoting tag $TAG to main..."
+      
+          git fetch --prune origin \
+            +refs/heads/alpha:refs/remotes/origin/alpha \
+            +refs/heads/main:refs/remotes/origin/main \
+            +refs/tags/*:refs/tags/*
+      
+          SHA="$(git rev-parse "$TAG^{commit}")"
+          echo "Tag $TAG => $SHA"
+      
+          # safety: tag must be in alpha history
+          git merge-base --is-ancestor "$SHA" origin/alpha
+      
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      
+          git checkout -B main origin/main
+          # git merge --no-ff --no-edit "${{ steps.tag.outputs.sha }}"
+          # git push --no-tags origin main
+          
+          # сначала пробуем ff (лучший вариант)
+          if git merge --ff-only "$SHA"; then
+            echo "Fast-forward OK"
+          else
+            echo "FF not possible -> merge --no-ff"
+            git merge --no-ff --no-edit "$SHA"
+          fi
+      
+          git push --no-tags origin main
+
+
       - name: Notify services deploy
         if: ${{ always() && steps.deploy_server_us.outcome != '' }}
         shell: bash
@@ -892,34 +930,6 @@ jobs:
           curl --request POST --header "Content-Type: application/json" \
             --data "$(jq -n --arg chat_id "${{ secrets.TELEGRAM_RELEASE_CHAT_ID }}" --arg text "$msg" '{chat_id:$chat_id, text:$text, parse_mode:"MarkdownV2"}')" \
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage"
-  
-      - name: Promote release tag -> main
-        shell: bash
-        run: |
-          set -euo pipefail
-      
-          TAG="${{ github.event.release.tag_name }}"
-          echo "Promoting tag $TAG to main..."
-      
-          git fetch --prune origin \
-            +refs/heads/alpha:refs/remotes/origin/alpha \
-            +refs/heads/main:refs/remotes/origin/main \
-            +refs/tags/*:refs/tags/*
-      
-          SHA="$(git rev-list -n 1 "refs/tags/$TAG")"
-          echo "Tag $TAG => $SHA"
-      
-          # safety: tag must be in alpha history
-          git merge-base --is-ancestor "$SHA" origin/alpha
-      
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-      
-          git checkout -B main origin/main
-          # git merge --ff-only "$SHA"
-          git merge --no-ff --no-edit "${{ steps.tag.outputs.sha }}"
-          git push --no-tags origin main
-
   
   
   #-------------- DEPLOY API TO PROD (matrix US, SG) ----------------#
@@ -1117,7 +1127,45 @@ jobs:
           if echo "$DEPLOY_OUT" | grep -q "__ROLLBACK_TRIGGERED__=1"; then
             exit 1
           fi
-  
+
+
+      - name: Promote release tag -> main
+        shell: bash
+        run: |
+          set -euo pipefail
+      
+          TAG="${{ github.event.release.tag_name }}"
+          echo "Promoting tag $TAG to main..."
+      
+          git fetch --prune origin \
+            +refs/heads/alpha:refs/remotes/origin/alpha \
+            +refs/heads/main:refs/remotes/origin/main \
+            +refs/tags/*:refs/tags/*
+      
+          SHA="$(git rev-parse "$TAG^{commit}")"
+          echo "Tag $TAG => $SHA"
+      
+          # safety: tag must be in alpha history
+          git merge-base --is-ancestor "$SHA" origin/alpha
+      
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      
+          git checkout -B main origin/main
+          # git merge --no-ff --no-edit "${{ steps.tag.outputs.sha }}"
+          # git push --no-tags origin main
+          
+          # сначала пробуем ff (лучший вариант)
+          if git merge --ff-only "$SHA"; then
+            echo "Fast-forward OK"
+          else
+            echo "FF not possible -> merge --no-ff"
+            git merge --no-ff --no-edit "$SHA"
+          fi
+      
+          git push --no-tags origin main
+
+
       - name: Notify API deploy (${{ matrix.location }})
         if: ${{ always() && steps.deploy_api.outcome != '' }}
         shell: bash
@@ -1195,42 +1243,6 @@ jobs:
             --data "$(jq -n --arg chat_id "${{ secrets.TELEGRAM_RELEASE_CHAT_ID }}" --arg text "$msg" '{chat_id:$chat_id, text:$text, parse_mode:"MarkdownV2"}')" \
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage"
   
-      - name: Promote release tag -> main
-        shell: bash
-        run: |
-          set -euo pipefail
-      
-          TAG="${{ github.event.release.tag_name }}"
-          echo "Promoting tag $TAG to main..."
-      
-          git fetch --prune origin \
-            +refs/heads/alpha:refs/remotes/origin/alpha \
-            +refs/heads/main:refs/remotes/origin/main \
-            +refs/tags/*:refs/tags/*
-      
-          SHA="$(git rev-parse "$TAG^{commit}")"
-          echo "Tag $TAG => $SHA"
-      
-          # safety: tag must be in alpha history
-          git merge-base --is-ancestor "$SHA" origin/alpha
-      
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-      
-          git checkout -B main origin/main
-          # git merge --no-ff --no-edit "${{ steps.tag.outputs.sha }}"
-          # git push --no-tags origin main
-          
-          # сначала пробуем ff (лучший вариант)
-          if git merge --ff-only "$SHA"; then
-            echo "Fast-forward OK"
-          else
-            echo "FF not possible -> merge --no-ff"
-            git merge --no-ff --no-edit "$SHA"
-          fi
-      
-          git push --no-tags origin main
-
 
   
   # #-------------- Promote main to release tag commit (after PROD deploy succeeded) ----------------#
