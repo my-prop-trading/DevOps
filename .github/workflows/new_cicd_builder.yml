@@ -59,36 +59,6 @@ permissions:
   packages: write   # ghcr push
 
 jobs:         
-  # set-version:
-  #   if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'release' }}
-  #   runs-on: ubuntu-latest
-  #   outputs:
-  #     version: ${{ steps.v.outputs.version }}
-  #     mode: ${{ steps.v.outputs.mode }} # alpha|release
-  #   steps:
-  #     - id: v
-  #       shell: bash
-  #       run: |
-  #         set -euo pipefail
-  
-  #         if [[ "${{ github.event_name }}" == "release" ]]; then
-  #           mode="release"
-  #           version="${{ github.event.release.tag_name }}"
-  #         else
-  #           mode="alpha"
-  #           version="${{ inputs.build_version }}"
-  #         fi
-  
-  #         if [[ -z "$version" ]]; then
-  #           echo "::error::version is empty"
-  #           exit 1
-  #         fi
-  
-  #         echo "mode=$mode" >> "$GITHUB_OUTPUT"
-  #         echo "version=$version" >> "$GITHUB_OUTPUT"
-  
-  #         echo "Resolved mode=$mode version=$version"
-
   set-version:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'release' }}
     runs-on: ubuntu-latest
@@ -491,27 +461,6 @@ jobs:
             echo "------------ Finished deployment ! ------------"
           EOF
 
-          
-      # - name: Send deploy notification
-      #   run: |
-      #     user="Launched deploy by: ${{ github.actor }}"
-      #     reason="Last commit: ${COMMIT_MESSAGE//\"/\\\"}"
-      #     version_info="Version: ${{ env.CURRENT_VERSION }} ---> ${{ env.VERSION }}"
-      #     date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
-      #     pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
-      #     IFS='.' read -r CURRENT_MAJOR CURRENT_MINOR CURRENT_PATCH <<< "${{ env.CURRENT_VERSION }}"
-      #     IFS='.' read -r NEW_MAJOR NEW_MINOR NEW_PATCH <<< "${{ env.VERSION }}"
-          
-      #     if [[ "$CURRENT_MAJOR" -ne "$NEW_MAJOR" || "$CURRENT_MINOR" -ne "$NEW_MINOR" ]]; then
-      #       extra_message="!!! Attention: Major version change detected! Please check settings or DataBase configuration !!!"
-      #     else
-      #       extra_message=""
-      #     fi
-
-      #     curl --request POST --header "Content-Type: application/json" \
-      #       --data "{\"text\":\"[${{ env.DEPLOY_ENV }}] GitHub Deploy Info:\n\n Service: ${{ inputs.repository_name }}\n $version_info\n\n $extra_message\n\n $user\n $reason\n $date\n\n Action URL:\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
-      #       "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
 
       - name: Send deploy notification
         shell: bash
@@ -553,41 +502,6 @@ jobs:
             "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage"
 
   #-------------- TAG commit (after alpha deploy succeeded) ----------------#
-  # tag-alpha-commit:
-  #   needs: [set-version, deploy-on-alpha]
-  #   if: >
-  #     ${{
-  #       github.event_name == 'workflow_dispatch' &&
-  #       needs.set-version.outputs.mode == 'alpha' &&
-  #       needs.deploy-on-alpha.result == 'success' &&
-  #       needs.set-version.outputs.version != ''
-  #     }}
-  #   runs-on: ubuntu-latest
-  #   name: "Tag commit with build_version"
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         fetch-depth: 0
-  
-  #     - name: Create git tag for version
-  #       shell: bash
-  #       run: |
-  #         set -euo pipefail
-  #         TAG="${{ needs.set-version.outputs.version }}"
-  
-  #         git fetch --tags
-  
-  #         if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
-  #           echo "::error title=Tag exists::Tag $TAG already exists"
-  #           exit 1
-  #         fi
-  
-  #         git config user.name  "github-actions[bot]"
-  #         git config user.email "github-actions[bot]@users.noreply.github.com"
-  
-  #         git tag -a "$TAG" -m "Alpha build $TAG"
-  #         git push origin "refs/tags/$TAG"
-
   tag-alpha-commit:
     needs: [set-version, deploy-on-alpha]
     # job запускаем всегда, чтобы видеть дебаг
@@ -669,17 +583,6 @@ jobs:
 
       # - name: Check dump all context
       #   uses: crazy-max/ghaction-dump-context@v2
-  
-      # - name: Get release version
-      #   id: get_version
-      #   run: |
-      #     if [ -z "${{ inputs.build_version }}" ]; then
-      #       VERSION="${{ inputs.release_version }}"
-      #     else
-      #       VERSION="${{ inputs.build_version }}"
-      #     fi
-      #     echo "VERSION=$VERSION" >> $GITHUB_ENV
-      #     echo "Using version: $VERSION"
   
       - name: Deploy microservices (US) with rollback + log tail
         id: deploy_server_us
@@ -805,11 +708,10 @@ jobs:
             FILTERED="$(echo "$RAW_LOGS" | grep -Ei 'warning|warn|error' | tail -n 10 || true)"
             
             if [[ -n "$FILTERED" ]]; then
-              echo "⚠️ Warnings/Errors detected:"
+              echo "🔴 Warnings/Errors detected:"
               echo "$FILTERED"
             else
-              echo "Last container logs:"
-              echo "No warnings or errors found in last 100 lines"
+              echo "🟢 Warnings/Errors not found"
             fi
             echo "__LOG_TAIL_END__"
             
@@ -861,8 +763,6 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
       
           git checkout -B main origin/main
-          # git merge --no-ff --no-edit "${{ steps.tag.outputs.sha }}"
-          # git push --no-tags origin main
           
           # сначала пробуем ff (лучший вариант)
           if git merge --ff-only "$SHA"; then
@@ -928,23 +828,27 @@ jobs:
           EOF
           )"
   
-          if [[ "$status" != "success" && -n "$log_tail" ]]; then
+          if [[ -n "${log_tail:-}" ]]; then
             log_e="$(printf "%s" "$log_tail" | esc)"
-            msg="${msg}
-  
-            *Last container logs:*
-            \`\`\`
-            ${log_e}
-            \`\`\`"
-                    fi
-            
-                    msg="${msg}
-            
-            *By:* $user_e
-            *Commit:* $reason_e
-            *Time:* $date_e
-            
-            [Open workflow run]($url_e)"
+          else
+            log_e="🟢 Warnings/Errors logs not found"
+          fi
+          
+          msg="${msg}
+          
+          *Last container logs:*
+          \`\`\`
+          ${log_e}
+          \`\`\`"
+
+
+          msg="${msg}
+          
+          *By:* $user_e
+          *Commit:* $reason_e
+          *Time:* $date_e
+          
+          [Open workflow run]($url_e)"
   
           curl --request POST --header "Content-Type: application/json" \
             --data "$(jq -n --arg chat_id "${{ secrets.TELEGRAM_RELEASE_CHAT_ID }}" --arg text "$msg" '{chat_id:$chat_id, text:$text, parse_mode:"MarkdownV2"}')" \
@@ -982,17 +886,6 @@ jobs:
           COMMIT_MESSAGE=$(git log -1 --pretty=%B)
           echo "$COMMIT_MESSAGE"
           echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
-  
-      # - name: Get release version
-      #   id: get_version
-      #   run: |
-      #     if [ -z "${{ inputs.build_version }}" ]; then
-      #       VERSION="${{ inputs.release_version }}"
-      #     else
-      #       VERSION="${{ inputs.build_version }}"
-      #     fi
-      #     echo "VERSION=$VERSION" >> $GITHUB_ENV
-      #     echo "Using version: $VERSION"
   
       - name: Resolve location + SSH target
         shell: bash
@@ -1134,10 +1027,10 @@ jobs:
             FILTERED="$(echo "$RAW_LOGS" | grep -Ei 'warning|warn|error' | tail -n 10 || true)"
             
             if [[ -n "$FILTERED" ]]; then
-              echo "⚠️ Warnings/Errors detected:"
+              echo "🔴 Warnings/Errors detected:"
               echo "$FILTERED"
             else
-              echo "✅ Warnings/Errors not found"
+              echo "🟢 Warnings/Errors not found"
             fi
             echo "__LOG_TAIL_END__"
             
@@ -1187,8 +1080,6 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
       
           git checkout -B main origin/main
-          # git merge --no-ff --no-edit "${{ steps.tag.outputs.sha }}"
-          # git push --no-tags origin main
           
           # сначала пробуем ff (лучший вариант)
           if git merge --ff-only "$SHA"; then
@@ -1255,23 +1146,11 @@ jobs:
             *Version:* \`$vold_e\` → \`$vnew_e\`
           EOF
           )"
-  
-          # if [[ "$status" != "success" && -n "$log_tail" ]]; then
-          #   log_e="$(printf "%s" "$log_tail" | esc)"
-          #   msg="${msg}
-  
-          #   *Last container logs:*
-          #   \`\`\`
-          #   ${log_e}
-          #   \`\`\`"
-          #           fi
-
-
 
           if [[ -n "${log_tail:-}" ]]; then
             log_e="$(printf "%s" "$log_tail" | esc)"
           else
-            log_e="✅ Warnings/Errors not found"
+            log_e="🟢 Warnings/Errors logs not found"
           fi
           
           msg="${msg}
@@ -1363,31 +1242,6 @@ jobs:
           COMMIT_MESSAGE=$(git log -1 --pretty=%B)
           echo $COMMIT_MESSAGE
           echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
-
-      # - name: Send error notification
-      #   run: |
-      #     user="Triggered by: ${{ github.actor }}"
-      #     reason="Last commit: ${{ env.COMMIT_MESSAGE }}"
-      #     date="Date: $(date -d "+2 hours" +"%d.%m.%Y %H:%M:%S")"
-      #     pipeline_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-        
-      #     needs_json='${{ toJSON(needs) }}'
-      #     failed_jobs=()
-          
-      #     while IFS= read -r job; do
-      #       failed_jobs+=("$job")
-      #     done < <(echo "$needs_json" | jq -r 'to_entries[] | select(.value.result == "failure") | .key')
-          
-      #     if [[ ${#failed_jobs[@]} -gt 0 ]]; then
-      #       job_names=$(IFS=, ; echo "${failed_jobs[*]}")
-      #       echo "Failed job names: $job_names"
-    
-      #       curl --request POST --header "Content-Type: application/json" \
-      #         --data "{\"text\":\"[ERROR] GitHub Action Info:\n\n Failed >>>   $job_names\n Project: ${{ inputs.repository_name }}\n\n $user\n $reason\n $date\n\n Please check action here:\n ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
-      #         "https://api.telegram.org/bot${{ secrets.TELEGRAM_NOTIFICATION_TOKEN }}/sendMessage?chat_id=${{ secrets.TELEGRAM_GITHAB_CHAT_ID }}"
-      #     else
-      #       echo "No jobs failed."
-      #     fi
 
       - name: Send error notification
         shell: bash
