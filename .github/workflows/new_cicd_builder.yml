@@ -1257,17 +1257,38 @@ jobs:
           EOF
           )"
   
-          if [[ "$status" != "success" && -n "$log_tail" ]]; then
+          # if [[ "$status" != "success" && -n "$log_tail" ]]; then
+          #   log_e="$(printf "%s" "$log_tail" | esc)"
+          #   msg="${msg}
+  
+          #   *Last container logs:*
+          #   \`\`\`
+          #   ${log_e}
+          #   \`\`\`"
+          #           fi
+
+
+
+          if [[ -n "${log_tail:-}" ]]; then
             log_e="$(printf "%s" "$log_tail" | esc)"
             msg="${msg}
-  
+      
             *Last container logs:*
             \`\`\`
             ${log_e}
             \`\`\`"
-                    fi
+            else
+            msg="${msg}
+      
+            *Last container logs:*
+            \`\`\`
+            [OK!] Errors or warnings not found
+            \`\`\`"
+          fi
+
+
             
-                    msg="${msg}
+            msg="${msg}
             
             *By:* $user_e
             *Commit:* $reason_e
