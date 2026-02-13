@@ -764,16 +764,22 @@ jobs:
       
           git checkout -B main origin/main
           
-          # сначала пробуем ff (лучший вариант)
-          if git merge --ff-only "$SHA"; then
-            echo "Fast-forward OK"
-          else
-            echo "FF not possible -> merge --no-ff"
-            git merge --no-ff --no-edit "$SHA"
-          fi
+          # # сначала пробуем ff (лучший вариант)
+          # if git merge --ff-only "$SHA"; then
+          #   echo "Fast-forward OK"
+          # else
+          #   echo "FF not possible -> merge --no-ff"
+          #   git merge --no-ff --no-edit "$SHA"
+          # fi
       
-          git push --no-tags origin main
+          # git push --no-tags origin main
 
+          # Move main exactly to tag commit
+          git checkout -B main origin/main
+          git reset --hard "$SHA"
+      
+          # Force update main (no tags push)
+          git push --force-with-lease --no-tags origin main
 
       - name: Notify services deploy
         if: ${{ always() && steps.deploy_server_us.outcome != '' }}
@@ -1081,15 +1087,22 @@ jobs:
       
           git checkout -B main origin/main
           
-          # сначала пробуем ff (лучший вариант)
-          if git merge --ff-only "$SHA"; then
-            echo "Fast-forward OK"
-          else
-            echo "FF not possible -> merge --no-ff"
-            git merge --no-ff --no-edit "$SHA"
-          fi
+          # # сначала пробуем ff (лучший вариант)
+          # if git merge --ff-only "$SHA"; then
+          #   echo "Fast-forward OK"
+          # else
+          #   echo "FF not possible -> merge --no-ff"
+          #   git merge --no-ff --no-edit "$SHA"
+          # fi
       
-          git push --no-tags origin main
+          # git push --no-tags origin main
+
+          # Move main exactly to tag commit
+          git checkout -B main origin/main
+          git reset --hard "$SHA"
+      
+          # Force update main (no tags push)
+          git push --force-with-lease --no-tags origin main
 
 
       - name: Notify API deploy (${{ matrix.location }})
