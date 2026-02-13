@@ -1137,8 +1137,7 @@ jobs:
               echo "⚠️ Warnings/Errors detected:"
               echo "$FILTERED"
             else
-              echo "Last container logs:"
-              echo "No warnings or errors found in last 100 lines"
+              echo "✅ Warnings/Errors not found"
             fi
             echo "__LOG_TAIL_END__"
             
@@ -1271,23 +1270,18 @@ jobs:
 
           if [[ -n "${log_tail:-}" ]]; then
             log_e="$(printf "%s" "$log_tail" | esc)"
-            msg="${msg}
-      
-            *Last container logs:*
-            \`\`\`
-            ${log_e}
-            \`\`\`"
-            else
-            msg="${msg}
-      
-            *Last container logs:*
-            \`\`\`
-            [OK!] Errors or warnings not found
-            \`\`\`"
+          else
+            log_e="✅ Warnings/Errors not found"
           fi
+          
+          msg="${msg}
+          
+          *Last container logs:*
+          \`\`\`
+          ${log_e}
+          \`\`\`"
 
 
-            
             msg="${msg}
             
             *By:* $user_e
