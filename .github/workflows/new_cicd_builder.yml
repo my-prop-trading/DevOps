@@ -711,7 +711,7 @@ jobs:
               echo "🔴 Warnings/Errors detected:"
               echo "$FILTERED"
             else
-              echo "🟢 Warnings/Errors not found"
+              echo "🟢 Warnings/Errors logs not found"
             fi
             echo "__LOG_TAIL_END__"
             
@@ -1030,7 +1030,7 @@ jobs:
               echo "🔴 Warnings/Errors detected:"
               echo "$FILTERED"
             else
-              echo "🟢 Warnings/Errors not found"
+              echo "🟢 Warnings/Errors logs not found"
             fi
             echo "__LOG_TAIL_END__"
             
